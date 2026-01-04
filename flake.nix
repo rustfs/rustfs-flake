@@ -87,6 +87,11 @@
           };
 
           config = mkIf cfg.enable {
+            # Ensure data directory exists with correct permissions
+            systemd.tmpfiles.rules = [
+              "d '${cfg.dataDir}' 0750 ${cfg.user} ${cfg.group} - -"
+            ];
+
             systemd.services.rustfs = {
               description = "RustFS Object Storage Service";
               after = [ "network.target" ];
@@ -125,6 +130,8 @@
                 description = "RustFS service user";
                 group = cfg.group;
                 isSystemUser = true;
+                home = cfg.dataDir;
+                createHome = false; # Created by tmpfiles instead
               };
             };
 
