@@ -16,7 +16,7 @@
     enable = true;
     
     # Data directory - where RustFS stores objects
-    dataDir = "/var/lib/rustfs/data";
+    dataDir = "/var/lib/rustfs";
     
     # API server address - accessible from network
     # Use "0.0.0.0:9000" to listen on all interfaces

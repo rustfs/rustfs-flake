@@ -160,7 +160,7 @@
             ];
             shellHook = ''
               echo "RustFS development environment"
-              echo "RustFS version: $(rustfs --version 2>/dev/null || echo 'unknown')"
+              echo "Type 'rustfs --help' to see available commands"
             '';
           };
         }
