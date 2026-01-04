@@ -24,7 +24,14 @@
           services.rustfs = {
             enable = true;
             dataDir = "/var/lib/rustfs";
+            # NOTE: Binding to 0.0.0.0 exposes the RustFS service on all network interfaces.
+            # Ensure that strong authentication and appropriate network restrictions (firewall,
+            # reverse proxy, VPN, etc.) are in place before using this in production. For
+            # local-only setups, consider binding to 127.0.0.1 instead.
             address = "0.0.0.0:9000";
+            # The console UI is also exposed on all interfaces when bound to 0.0.0.0.
+            # Protect this endpoint with authentication and/or restrict access to trusted
+            # networks only.
             consoleAddress = "0.0.0.0:9001";
           };
 

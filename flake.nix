@@ -68,13 +68,13 @@
             };
 
             address = mkOption {
-              type = types.str;
+              type = types.strMatching "^[^:]+:[0-9]+$";
               default = "127.0.0.1:9000";
               description = "Address and port for RustFS to listen on.";
             };
 
             consoleAddress = mkOption {
-              type = types.str;
+              type = types.strMatching "^[^:]+:[0-9]+$";
               default = "127.0.0.1:9001";
               description = "Address and port for RustFS console to listen on.";
             };
@@ -89,7 +89,7 @@
           config = mkIf cfg.enable {
             # Ensure data directory exists with correct permissions
             systemd.tmpfiles.rules = [
-              "d '${cfg.dataDir}' 0750 ${cfg.user} ${cfg.group} - -"
+              "d ${cfg.dataDir} 0750 ${cfg.user} ${cfg.group} - -"
             ];
 
             systemd.services.rustfs = {
@@ -145,7 +145,7 @@
 
       # Overlay for adding RustFS to nixpkgs
       overlays.default = final: prev: {
-        rustfs = self.packages.${prev.system}.rustfs;
+        rustfs = self.packages.${final.system}.rustfs;
       };
 
       # Development shell
