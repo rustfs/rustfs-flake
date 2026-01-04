@@ -87,9 +87,9 @@
           };
 
           config = mkIf cfg.enable {
-            # Ensure data directory exists with correct permissions
-            systemd.tmpfiles.rules = [
-              "d ${cfg.dataDir} 0750 ${cfg.user} ${cfg.group} - -"
+            # Ensure data directory exists with correct permissions (only if not using StateDirectory)
+            systemd.tmpfiles.rules = lib.optionals (! lib.hasPrefix "/var/lib/" cfg.dataDir) [
+              "d ${escapeShellArg cfg.dataDir} 0750 ${cfg.user} ${cfg.group} - -"
             ];
 
             systemd.services.rustfs = {
@@ -101,7 +101,7 @@
                 Type = "simple";
                 User = cfg.user;
                 Group = cfg.group;
-                ExecStart = lib.escapeShellArgs ([
+                ExecStart = lib.concatStringsSep " " ([
                   "${cfg.package}/bin/rustfs"
                   "server"
                   cfg.dataDir
@@ -123,7 +123,9 @@
                 ProtectHome = true;
                 ReadWritePaths = [ cfg.dataDir ];
               } // (lib.optionalAttrs (cfg.configFile != null) {
-                ReadOnlyPaths = [ cfg.configFile ];
+                ReadOnlyPaths = [ (builtins.dirOf cfg.configFile) ];
+              }) // (lib.optionalAttrs (lib.hasPrefix "/var/lib/" cfg.dataDir) {
+                StateDirectory = lib.removePrefix "/var/lib/" cfg.dataDir;
               });
             };
 
@@ -133,7 +135,7 @@
                 group = cfg.group;
                 isSystemUser = true;
                 home = cfg.dataDir;
-                createHome = false; # Created by tmpfiles instead
+                createHome = false; # Created by StateDirectory or tmpfiles
               };
             };
 
