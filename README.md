@@ -4,7 +4,7 @@ A Nix flake for [RustFS](https://github.com/rustfs/rustfs), a high-performance S
 
 ## Features
 
-- 🚀 **High Performance**: 2.3x faster than MinIO for 4KB object payloads
+- 🚀 **High Performance**: 2.3x faster than MinIO for 4KB object payloads (according to upstream benchmarks)
 - 🔒 **S3 Compatible**: Drop-in replacement for Amazon S3, MinIO, and other S3-compatible storage
 - 📦 **Easy Installation**: Simple Nix flake integration for NixOS
 - 🔧 **NixOS Module**: Pre-configured systemd service for running RustFS

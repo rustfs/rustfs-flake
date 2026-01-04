@@ -96,9 +96,18 @@
                 Type = "simple";
                 User = cfg.user;
                 Group = cfg.group;
-                ExecStart = "${cfg.package}/bin/rustfs server ${cfg.dataDir} --address ${cfg.address} --console-address ${cfg.consoleAddress}"
-                  + optionalString (cfg.configFile != null) " --config ${cfg.configFile}"
-                  + optionalString (cfg.extraArgs != [ ]) " ${concatStringsSep " " cfg.extraArgs}";
+                ExecStart = lib.escapeShellArgs ([
+                  "${cfg.package}/bin/rustfs"
+                  "server"
+                  cfg.dataDir
+                  "--address"
+                  cfg.address
+                  "--console-address"
+                  cfg.consoleAddress
+                ] ++ lib.optionals (cfg.configFile != null) [
+                  "--config"
+                  cfg.configFile
+                ] ++ cfg.extraArgs);
                 Restart = "on-failure";
                 RestartSec = "5s";
 
@@ -108,8 +117,6 @@
                 ProtectSystem = "strict";
                 ProtectHome = true;
                 ReadWritePaths = [ cfg.dataDir ];
-                StateDirectory = baseNameOf cfg.dataDir;
-                StateDirectoryMode = "0750";
               };
             };
 
