@@ -111,7 +111,7 @@
                   cfg.consoleAddress
                 ] ++ lib.optionals (cfg.configFile != null) [
                   "--config"
-                  cfg.configFile
+                  (toString cfg.configFile)
                 ] ++ cfg.extraArgs);
                 Restart = "on-failure";
                 RestartSec = "5s";
@@ -139,9 +139,13 @@
               };
             };
 
-            users.groups = mkIf (cfg.user == "rustfs") (
-              { ${cfg.group} = { }; }
-            );
+            users.groups = 
+              (mkIf (cfg.user == "rustfs") {
+                ${cfg.group} = { };
+              }) //
+              (mkIf (cfg.group == "rustfs" && cfg.user != "rustfs") {
+                rustfs = { };
+              });
           };
         };
 
