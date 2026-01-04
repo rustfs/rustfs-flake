@@ -1,0 +1,48 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1735811080,
+        "narHash": "sha256-EXAMPLE-HASH",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "rustfs": "rustfs"
+      }
+    },
+    "rustfs": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1735811080,
+        "narHash": "sha256-EXAMPLE-HASH2",
+        "owner": "rustfs",
+        "repo": "rustfs",
+        "rev": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rustfs",
+        "repo": "rustfs",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
