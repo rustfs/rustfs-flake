@@ -139,9 +139,9 @@
               };
             };
 
-            users.groups = mkIf (cfg.group == "rustfs") {
-              rustfs = { };
-            };
+            users.groups = mkIf (cfg.group == "rustfs" || (cfg.user == "rustfs" && cfg.group != "rustfs")) (
+              { ${cfg.group} = { }; }
+            );
           };
         };
 
