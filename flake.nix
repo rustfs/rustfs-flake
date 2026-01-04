@@ -122,7 +122,9 @@
                 ProtectSystem = "strict";
                 ProtectHome = true;
                 ReadWritePaths = [ cfg.dataDir ];
-              };
+              } // (lib.optionalAttrs (cfg.configFile != null) {
+                ReadOnlyPaths = [ cfg.configFile ];
+              });
             };
 
             users.users = mkIf (cfg.user == "rustfs") {
