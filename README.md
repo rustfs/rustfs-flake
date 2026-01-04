@@ -12,6 +12,8 @@ A Nix flake for [RustFS](https://github.com/rustfs/rustfs), a high-performance S
 
 ## Quick Start
 
+> **Note**: When you first use this flake, Nix will automatically generate a `flake.lock` file with the correct dependency hashes.
+
 ### Running RustFS with nix run
 
 ```bash
