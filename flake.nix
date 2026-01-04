@@ -89,7 +89,7 @@
           config = mkIf cfg.enable {
             # Ensure data directory exists with correct permissions (only if not using StateDirectory)
             systemd.tmpfiles.rules = lib.optionals (! lib.hasPrefix "/var/lib/" cfg.dataDir) [
-              "d ${escapeShellArg cfg.dataDir} 0750 ${cfg.user} ${cfg.group} - -"
+              "d ${lib.escapeShellArg cfg.dataDir} 0750 ${cfg.user} ${cfg.group} - -"
             ];
 
             systemd.services.rustfs = {
@@ -139,7 +139,7 @@
               };
             };
 
-            users.groups = mkIf (cfg.group == "rustfs" || (cfg.user == "rustfs" && cfg.group != "rustfs")) (
+            users.groups = mkIf (cfg.user == "rustfs") (
               { ${cfg.group} = { }; }
             );
           };
