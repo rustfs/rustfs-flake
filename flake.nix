@@ -40,7 +40,7 @@
         {
           default = pkgs.stdenvNoCC.mkDerivation {
             pname = "rustfs";
-            version = "latest";
+            version = sources.version;
 
             src = pkgs.fetchurl {
               inherit (srcInfo) url sha256;
