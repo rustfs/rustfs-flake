@@ -29,7 +29,7 @@
         ({ config, pkgs, ... }: {
           services.rustfs = {
             enable = true;
-            package = rustfs-flake.packages.${pkgs.system}.default;
+            package = rustfs-flake.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
             volumes = "/var/lib/rustfs/data";
             address = "0.0.0.0:9000";
