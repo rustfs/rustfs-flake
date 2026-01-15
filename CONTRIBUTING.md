@@ -42,7 +42,7 @@ nix flake check
 nix build .#default
 
 # Test the example configuration
-nix eval .#nixosConfigurations.example-host.config.services.rustfs
+cd examples && nix eval .#nixosConfigurations.example-host.config.services.rustfs
 ```
 
 ### Updating Binaries
