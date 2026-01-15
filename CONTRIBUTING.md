@@ -68,7 +68,7 @@ The `sources.json` file tracks the upstream versions and hashes. When a new vers
 
 ## Security
 
-If you discover a security vulnerability, please do **not** open an issue. Instead, follow our security policy (see SECURITY.md if available) or contact the maintainers directly.
+If you discover a security vulnerability, please do **not** open an issue. Instead, contact the maintainers directly using the contact options provided in this repository's hosting platform.
 
 ---
 
