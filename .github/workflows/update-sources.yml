@@ -30,7 +30,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          # Step 1: Disable automatic credential persistence
           persist-credentials: false
 
       - name: Install Nix
@@ -74,7 +73,8 @@ jobs:
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
             
             echo "Fetching hash for $URL..."
-            HASH=$(nix-prefetch-url --type sha256 "$URL")
+            # FIX: Added --hex to match standard SHA256 hex format
+            HASH=$(nix-prefetch-url --type sha256 --hex "$URL")
             
             jq --arg sys "$system" --arg hash "$HASH" '.files[$sys].sha256 = $hash' sources.json.new > sources.json.tmp
             mv sources.json.tmp sources.json.new
@@ -85,7 +85,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Clean up Git credentials
-        # Step 2: Explicitly remove any lingering Authorization headers in git config
         run: git config --local --unset-all http.https://github.com/.extraheader || true
 
       - name: Create Pull Request
@@ -103,7 +102,7 @@ jobs:
             ## Description
             Automated update of RustFS binaries to version `${{ steps.update_script.outputs.version }}`.
             
-            Verified SHA256 hashes for all platforms.
+            Verified SHA256 hashes (Hex format) for all platforms.
           labels: |
             dependencies
             automated-pr
