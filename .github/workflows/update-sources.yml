@@ -71,7 +71,7 @@ jobs:
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
             echo "Fetching hash for $URL..."
             HASH=$(nix-prefetch-url --type sha256 "$URL")
-            jq ". files[\"$system\"].sha256 = \"$HASH\"" sources.json.new > sources.json.tmp && mv sources.json.tmp sources.json.new
+            jq ".files[\"$system\"].sha256 = \"$HASH\"" sources.json.new > sources.json.tmp && mv sources.json.tmp sources.json.new
           done
 
           mv sources.json.new sources.json
