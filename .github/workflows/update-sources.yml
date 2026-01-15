@@ -37,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="rustfs/rustfs"
-          LATEST_RELEASE=$(gh api repos/$REPO/releases/latest)
+          LATEST_RELEASE=$(gh api repos/$REPO/releases --jq 'first')
           VERSION=$(echo "$LATEST_RELEASE" | jq -r '.tag_name')
           CURRENT_VERSION=$(jq -r '.version' sources.json)
 
@@ -65,7 +65,7 @@ jobs:
           for system in "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"; do
             FILE_NAME=$(jq -r --arg sys "$system" '.files[$sys].name' sources.json.new)
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
-            
+          
             echo "Fetching hash for $URL..."
             HASH=$(nix-prefetch-url --type sha256 "$URL")
 
