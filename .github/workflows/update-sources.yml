@@ -22,9 +22,15 @@ on:
 jobs:
   update-sources:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25
@@ -34,10 +40,10 @@ jobs:
       - name: Update sources.json
         id: update_script
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="rustfs/rustfs"
-          LATEST_RELEASE=$(gh api repos/$REPO/releases/latest)
+          LATEST_RELEASE=$(gh api repos/$REPO/releases --jq 'first')
           VERSION=$(echo "$LATEST_RELEASE" | jq -r '.tag_name')
           CURRENT_VERSION=$(jq -r '.version' sources.json)
 
@@ -49,7 +55,6 @@ jobs:
 
           echo "Updating to $VERSION..."
 
-          # Temporary file for new sources
           cat <<EOF > sources.json.new
           {
             "version": "$VERSION",
@@ -63,18 +68,25 @@ jobs:
           }
           EOF
 
-          # Calculate SHA256 for each file
           for system in "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"; do
-            FILE_NAME=$(jq -r ".files[\"$system\"].name" sources.json.new)
+            FILE_NAME=$(jq -r --arg sys "$system" '.files[$sys].name' sources.json.new)
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
+            
             echo "Fetching hash for $URL..."
-            HASH=$(nix-prefetch-url --type sha256 "$URL")
-            jq ".files[\"$system\"].sha256 = \"$HASH\"" sources.json.new > sources.json.tmp && mv sources.json.tmp sources.json.new
+            # Get base32 hash from nix-prefetch-url and convert to hex (base16)
+            BASE32_HASH=$(nix-prefetch-url --type sha256 "$URL")
+            HASH=$(nix-hash --type sha256 --to-base16 "$BASE32_HASH")
+
+            jq --arg sys "$system" --arg hash "$HASH" '.files[$sys].sha256 = $hash' sources.json.new > sources.json.tmp
+            mv sources.json.tmp sources.json.new
           done
 
           mv sources.json.new sources.json
           echo "updated=true" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Clean up Git credentials
+        run: git config --local --unset-all http.https://github.com/.extraheader || true
 
       - name: Create Pull Request
         if: steps.update_script.outputs.updated == 'true'
@@ -89,12 +101,9 @@ jobs:
           title: "chore: update rustfs to ${{ steps.update_script.outputs.version }}"
           body: |
             ## Description
-            This is an automated PR to update the RustFS prebuilt binaries to version `${{ steps.update_script.outputs.version }}`.
-
-            ### Changes
-            - Updated `sources.json` with new download URLs and SHA256 hashes.
+            Automated update of RustFS binaries to version `${{ steps.update_script.outputs.version }}`.
             
-            Verified by GitHub Actions.
+            Verified SHA256 hashes (Hex format) for all platforms.
           labels: |
             dependencies
             automated-pr
