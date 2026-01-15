@@ -1,39 +1,35 @@
 {
-  description = "rustfs prebuilt binary flake";
+  description = "RustFS: High-performance object storage server (Prebuilt Binary Flake)";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
 
-  outputs =
-    { self, nixpkgs }:
+  outputs = { self, nixpkgs }:
     let
       sources = builtins.fromJSON (builtins.readFile ./sources.json);
-      systems = [
+      supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
         "x86_64-darwin"
         "aarch64-darwin"
       ];
-
-      forAllSystems = nixpkgs.lib.genAttrs systems;
-
-      rustfsSrc =
-        system:
-        let
-          file = sources.files.${system} or (throw "Unsupported system: ${system}");
-        in
-        {
-          url = "${sources.downloadBase}/${sources.version}/${file.name}";
-          sha256 = file.sha256;
-        };
-
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
+      # Standard NixOS Module
       nixosModules.rustfs = import ./nixos/rustfs.nix;
-      packages = forAllSystems (
-        system:
+      nixosModules.default = self.nixosModules.rustfs;
+
+      # Overlays for extending nixpkgs
+      overlays.default = final: prev: {
+        rustfs = self.packages.${prev.system}.default;
+      };
+
+      packages = forAllSystems (system:
         let
           pkgs = import nixpkgs { inherit system; };
-          srcInfo = rustfsSrc system;
+          srcInfo = sources.files.${system} or (throw "Unsupported system: ${system}");
         in
         {
           default = pkgs.stdenvNoCC.mkDerivation {
@@ -41,7 +37,8 @@
             version = sources.version;
 
             src = pkgs.fetchurl {
-              inherit (srcInfo) url sha256;
+              url = "${sources.downloadBase}/${sources.version}/${srcInfo.name}";
+              sha256 = srcInfo.sha256;
             };
 
             nativeBuildInputs = [ pkgs.unzip ];
@@ -49,6 +46,7 @@
             dontUnpack = true;
 
             installPhase = ''
+              runHook preInstall
               mkdir -p $out/bin
               unzip $src
               if [ ! -f rustfs ]; then
@@ -56,7 +54,25 @@
                 exit 1
               fi
               install -m755 rustfs $out/bin/rustfs
+              runHook postInstall
             '';
+
+            meta = with pkgs.lib; {
+              description = "High-performance object storage server written in Rust";
+              homepage = "https://rustfs.com";
+              license = licenses.asl20;
+              platforms = supportedSystems;
+              mainProgram = "rustfs";
+            };
+          };
+        }
+      );
+
+      devShells = forAllSystems (system:
+        let pkgs = import nixpkgs { inherit system; };
+        in {
+          default = pkgs.mkShell {
+            buildInputs = with pkgs; [ nixpkgs-fmt ];
           };
         }
       );

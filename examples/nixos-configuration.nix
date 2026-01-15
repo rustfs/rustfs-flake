@@ -1,53 +1,35 @@
-# Example NixOS configuration for running RustFS
+# Example NixOS configuration module for RustFS
 #
-# This example shows how to set up RustFS as a systemd service on NixOS.
-# Add this to your /etc/nixos/configuration.nix or as a separate module.
+# This file can be imported into your main configuration.nix
 
 { config, pkgs, ... }:
 
 {
-  imports = [
-    # Import the RustFS flake module
-    # You can reference this via flake inputs in your system flake.nix
-  ];
-
-  # Enable the RustFS service
   services.rustfs = {
     enable = true;
     
-    # Data directory - where RustFS stores objects
-    dataDir = "/var/lib/rustfs";
+    # Storage path
+    volumes = "/var/lib/rustfs/data";
     
-    # API server address
-    # Default to localhost for security; this limits access to the local machine.
-    # If you need remote access, you can use "0.0.0.0:9000" to listen on all interfaces,
-    # but ensure you understand the security implications and protect the service
-    # appropriately (firewall, authentication, TLS, etc.).
+    # API server address (Port 9000)
     address = "127.0.0.1:9000";
-    
-    # Console web UI address (binding to 127.0.0.1 keeps the admin console local-only).
-    # As with the API, only use "0.0.0.0:9001" if you intentionally expose it
-    # and have proper network and access controls in place.
+
+    # Management console configuration (Port 9001)
+    consoleEnable = true;
     consoleAddress = "127.0.0.1:9001";
-    
-    # Optional: Path to configuration file
-    # configFile = "/etc/rustfs/config.yaml";
-    
-    # Optional: Additional command-line arguments
-    # extraArgs = [ "--debug" ];
+
+    # Logging configuration
+    logLevel = "info";
+    logDirectory = "/var/log/rustfs";
+
+    # Security: In production, use sops-nix or agenix to inject these
+    accessKey = "rustfs-admin";
+    secretKey = "change-me-in-production";
   };
 
-  # Open firewall ports for RustFS
-  networking.firewall = {
-    allowedTCPPorts = [
-      9000  # RustFS API
-      9001  # RustFS Console
-    ];
-  };
-
-  # Optional: Create admin users with access to RustFS data
-  # users.users.rustfs-admin = {
-  #   isNormalUser = true;
-  #   extraGroups = [ "rustfs" ];
-  # };
+  # Open firewall ports for both API and Console
+  networking.firewall.allowedTCPPorts = [
+    9000 # RustFS API
+    9001 # RustFS Console
+  ];
 }

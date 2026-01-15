@@ -1,60 +1,59 @@
-# Contributing to rustfs-flake
+# Contributing to RustFS Flake
 
-Thank you for your interest in contributing to rustfs-flake! This document provides guidelines for contributing to this Nix flake.
+First off, thank you for considering contributing to RustFS! It's people like you that make RustFS such a great tool.
 
-## Getting Started
+## Development Workflow
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/rustfs-flake.git`
-3. Create a feature branch: `git checkout -b feature/my-new-feature`
+This repository manages the Nix Flake for prebuilt RustFS binaries.
 
-## Making Changes
+### Prerequisites
 
-### Testing Your Changes
+- [Nix](https://nixos.org/download.html) with Flakes enabled.
+- [nixpkgs-fmt](https://github.com/nix-community/nixpkgs-fmt) for code formatting.
 
-Since this is a Nix flake, you should test your changes locally:
+### Local Testing
+
+Before submitting a PR, please ensure your changes are valid:
 
 ```bash
-# Check flake syntax
+# Format check
+nix shell nixpkgs#nixpkgs-fmt -c nixpkgs-fmt --check .
+
+# Syntax and basic flake check
 nix flake check
 
-# Build the package
-nix build
+# Build the default package for your system
+nix build .#default
 
-# Test the NixOS module (requires NixOS)
-nixos-rebuild test --flake .#
-
-# Enter the dev shell
-nix develop
+# Test the example configuration
+nix eval .#nixosConfigurations.example-host.config.services.rustfs
 ```
 
-### Code Style
+### Updating Binaries
 
-- Follow the existing Nix code style in the repository
-- Use 2 spaces for indentation
-- Keep lines under 100 characters when possible
-- Add comments for complex logic
+The `sources.json` file tracks the upstream versions and hashes. When a new version of RustFS is released:
 
-### Commit Messages
+1. Update the `version` field in `sources.json`.
+2. Update the `sha256` hashes for all supported platforms.
+3. Verify the build: `nix build .`.
 
-- Use clear, descriptive commit messages
-- Start with a verb in present tense (e.g., "Add", "Fix", "Update")
-- Reference issues when applicable
+## Coding Standards
 
-## Submitting Changes
+- **Nix Style**: Follow the [Nixpkgs architecture](https://nixos.org/manual/nixpkgs/stable/) guidelines.
+- **Modularity**: Keep the NixOS module (`nixos/rustfs.nix`) decoupled from the package definition.
+- **Documentation**: Any new option in the NixOS module must include a clear `description`.
 
-1. Push your changes to your fork
-2. Create a Pull Request against the main branch
-3. Describe your changes in the PR description
-4. Wait for review and address any feedback
+## Pull Request Process
 
-## Reporting Issues
+1. Create a new branch: `git checkout -b feat/your-feature-name`.
+2. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat: add tlsDirectory option`).
+3. Ensure the `examples/` are updated if you change the module interface.
+4. Submit the PR and wait for the maintainers' review.
 
-- Use the GitHub issue tracker
-- Include your Nix/NixOS version
-- Provide steps to reproduce the issue
-- Include relevant error messages
+## Security
 
-## Questions?
+If you discover a security vulnerability, please do **not** open an issue. Instead, follow our security policy (see SECURITY.md if available) or contact the maintainers directly.
 
-Feel free to open an issue for questions or discussions!
+---
+
+*By contributing, you agree that your contributions will be licensed under the project's LICENSE.*
