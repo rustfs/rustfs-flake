@@ -16,21 +16,22 @@ name: Update Sources
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # every 2 hours
+    - cron: '0 0 * * *' # Daily at midnight
   workflow_dispatch: # Manual trigger
-  repository_dispatch:
-    types: [ release ]
-
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
   update-sources:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Step 1: Disable automatic credential persistence
+          persist-credentials: false
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25
@@ -71,10 +72,10 @@ jobs:
           for system in "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"; do
             FILE_NAME=$(jq -r --arg sys "$system" '.files[$sys].name' sources.json.new)
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
-          
+            
             echo "Fetching hash for $URL..."
             HASH=$(nix-prefetch-url --type sha256 "$URL")
-
+            
             jq --arg sys "$system" --arg hash "$HASH" '.files[$sys].sha256 = $hash' sources.json.new > sources.json.tmp
             mv sources.json.tmp sources.json.new
           done
@@ -83,12 +84,18 @@ jobs:
           echo "updated=true" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Clean up Git credentials
+        # Step 2: Explicitly remove any lingering Authorization headers in git config
+        run: git config --local --unset-all http.https://github.com/.extraheader || true
+
       - name: Create Pull Request
         if: steps.update_script.outputs.updated == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: update sources.json to ${{ steps.update_script.outputs.version }}"
+          committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
           branch: "automation/update-sources-${{ steps.update_script.outputs.version }}"
           delete-branch: true
           title: "chore: update rustfs to ${{ steps.update_script.outputs.version }}"
