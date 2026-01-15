@@ -32,9 +32,20 @@
     logLevel = "info";
     logDirectory = "/var/log/rustfs";
 
-    # Security: In production, use sops-nix or agenix to inject these
-    accessKey = "rustfs-admin";
-    secretKey = "change-me-in-production";
+    # Security: In production, do not hard-code secrets. Integrate a secret
+    # management tool such as sops-nix or agenix to provide these values.
+    #
+    # Example with sops-nix (assuming you have defined the secrets
+    # `rustfs-access-key` and `rustfs-secret-key` in your sops file):
+    #   services.rustfs.accessKey =
+    #     builtins.readFile config.sops.secrets."rustfs-access-key".path;
+    #   services.rustfs.secretKey =
+    #     builtins.readFile config.sops.secrets."rustfs-secret-key".path;
+    #
+    # For this example configuration, we use obvious placeholders instead of
+    # real secrets. Replace them with values injected by your secret manager.
+    accessKey = "<rustfs-access-key-from-secret-manager>";
+    secretKey = "<rustfs-secret-key-from-secret-manager>";
   };
 
   # Open firewall ports for both API and Console
