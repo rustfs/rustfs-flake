@@ -37,9 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="rustfs/rustfs"
-
-          # Fetch the latest release (including prereleases)
-          LATEST_RELEASE=$(gh api repos/$REPO/releases --jq 'first')
+          LATEST_RELEASE=$(gh api repos/$REPO/releases/latest)
           VERSION=$(echo "$LATEST_RELEASE" | jq -r '.tag_name')
           CURRENT_VERSION=$(jq -r '.version' sources.json)
 
@@ -51,7 +49,6 @@ jobs:
 
           echo "Updating to $VERSION..."
 
-          # Temporary file for new sources
           cat <<EOF > sources.json.new
           {
             "version": "$VERSION",
@@ -65,13 +62,15 @@ jobs:
           }
           EOF
 
-          # Calculate SHA256 for each file
           for system in "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"; do
-            FILE_NAME=$(jq -r ". files[\"$system\"].name" sources.json.new)
+            FILE_NAME=$(jq -r --arg sys "$system" '.files[$sys].name' sources.json.new)
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
+            
             echo "Fetching hash for $URL..."
             HASH=$(nix-prefetch-url --type sha256 "$URL")
-            jq ".files[\"$system\"].sha256 = \"$HASH\"" sources.json.new > sources.json.tmp && mv sources.json.tmp sources.json.new
+
+            jq --arg sys "$system" --arg hash "$HASH" '.files[$sys].sha256 = $hash' sources.json.new > sources.json.tmp
+            mv sources.json.tmp sources.json.new
           done
 
           mv sources.json.new sources.json
@@ -91,12 +90,9 @@ jobs:
           title: "chore: update rustfs to ${{ steps.update_script.outputs.version }}"
           body: |
             ## Description
-            This is an automated PR to update the RustFS prebuilt binaries to version `${{ steps.update_script.outputs.version }}`.
-
-            ### Changes
-            - Updated `sources.json` with new download URLs and SHA256 hashes.
+            Automated update of RustFS binaries to version `${{ steps.update_script.outputs.version }}`.
             
-            Verified by GitHub Actions.
+            Verified SHA256 hashes for all platforms.
           labels: |
             dependencies
             automated-pr
