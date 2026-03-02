@@ -16,6 +16,8 @@
   description = "RustFS: High-performance object storage server (Prebuilt Binary Flake)";
 
   inputs = {
+    # Security Note: Using unstable branch. For production environments,
+    # consider pinning to a specific release (e.g., nixos-24.05) to ensure stability and security updates.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
@@ -55,19 +57,26 @@
               sha256 = srcInfo.sha256;
             };
 
-            nativeBuildInputs = [ pkgs.unzip ];
+            # Security & Build Tools:
+            # - unzip: Required for extracting the source archive.
+            # - binutils: Provides 'strip' to remove symbols, reducing size and obscuring internal details.
+            nativeBuildInputs = [ pkgs.unzip pkgs.binutils ];
 
-            dontUnpack = true;
+            # The archive contains the binary at the root, so we set sourceRoot to current dir
+            sourceRoot = ".";
 
             installPhase = ''
               runHook preInstall
+
               mkdir -p $out/bin
-              unzip $src
-              if [ ! -f rustfs ]; then
-                echo "Error: rustfs binary not found in the archive."
-                exit 1
-              fi
               install -m755 rustfs $out/bin/rustfs
+
+              # Security Hardening:
+              # Strip the binary to remove debugging symbols and symbol tables.
+              # This reduces the binary size and removes potentially sensitive build-time path information.
+              # We use '|| true' to prevent failure if the binary is already stripped or format is unrecognized.
+              strip $out/bin/rustfs || true
+
               runHook postInstall
             '';
 
@@ -77,6 +86,9 @@
               license = licenses.asl20;
               platforms = supportedSystems;
               mainProgram = "rustfs";
+              # Security: Explicitly declare that this package contains pre-compiled binaries.
+              # This helps users and audit tools identify non-source-built components.
+              sourceProvenance = [ sourceTypes.binaryNativeCode ];
             };
           };
         }
@@ -86,7 +98,8 @@
         let pkgs = import nixpkgs { inherit system; };
         in {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [ nixpkgs-fmt ];
+            # Security: Include shellcheck to assist in writing secure shell scripts during development.
+            buildInputs = with pkgs; [ nixpkgs-fmt shellcheck ];
           };
         }
       );
