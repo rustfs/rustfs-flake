@@ -66,8 +66,12 @@ in
 
     accessKeyFile = lib.mkOption {
       type = lib.types.path;
-      default = "rustfsadmin";
-      description = "Access key filepath for client authentication.";
+      description = "Path to a file containing the access key for client authentication.";
+    };
+
+    secretKeyFile = lib.mkOption {
+      type = lib.types.path;
+      description = "Path to a file containing the secret key for client authentication.";
     };
 
     volumes = lib.mkOption {
