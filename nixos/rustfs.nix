@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.services.rustfs;
 
   envFile = pkgs.writeText "rustfs.env" (
     ''
-      RUSTFS_ACCESS_KEY=${cfg.accessKey}
-      RUSTFS_SECRET_KEY=${cfg.secretKey}
       RUSTFS_VOLUMES="${cfg.volumes}"
       RUSTFS_ADDRESS="${cfg.address}"
       RUSTFS_CONSOLE_ENABLE=${lib.boolToString cfg.consoleEnable}
@@ -34,6 +37,18 @@ let
   );
 in
 {
+  imports = [
+    (lib.mkRenamedOptionModule
+      [ "services" "rustfs" "accessKey" ]
+      [ "services" "rustfs" "accessKeyFile" ]
+      "World readable secrets is insecure and should be replaced with references to files"
+    )
+    (lib.mkRenamedOptionModule
+      [ "services" "rustfs" "secretKey" ]
+      [ "services" "rustfs" "secretKeyFile" ]
+      "World readable secrets is insecure and should be replaced with references to files"
+    )
+  ];
   options.services.rustfs = {
     enable = lib.mkEnableOption "RustFS object storage server";
 
@@ -49,16 +64,10 @@ in
       description = "Additional environment variables for the RustFS service.";
     };
 
-    accessKey = lib.mkOption {
-      type = lib.types.str;
+    accessKeyFile = lib.mkOption {
+      type = lib.types.path;
       default = "rustfsadmin";
-      description = "Access key for client authentication.";
-    };
-
-    secretKey = lib.mkOption {
-      type = lib.types.str;
-      default = "rustfsadmin";
-      description = "Secret key for signing and authorization.";
+      description = "Access key filepath for client authentication.";
     };
 
     volumes = lib.mkOption {
@@ -120,8 +129,15 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${cfg.package}/bin/rustfs";
-        EnvironmentFile = envFile;
+        ExecStart =
+          pkgs.writeShellApplication "rustfs-start"
+            # sh
+            ''
+              	   source ${envFile}
+              	RUSTFS_ACCESS_KEY="$(cat ${cfg.accessKeyFile})"
+              	   RUSTFS_SECRET_KEY="$(cat ${cfg.secretKeyFile})"
+              	exec ${cfg.package}/bin/rustfs
+                                  		'';
 
         LimitNOFILE = 1048576;
         LimitNPROC = 32768;
