@@ -65,9 +65,15 @@ in
     };
 
     accessKeyFile = lib.mkOption {
-      type = lib.types.path;
-      default = "rustfsadmin";
-      description = "Access key filepath for client authentication.";
+      type = lib.types.str;
+      example = "/run/secrets/rustfs-access-key";
+      description = "Path to a file containing the access key for client authentication. Use a runtime path (e.g. /run/secrets/…) to prevent the secret from being copied into the Nix store.";
+    };
+
+    secretKeyFile = lib.mkOption {
+      type = lib.types.str;
+      example = "/run/secrets/rustfs-secret-key";
+      description = "Path to a file containing the secret key for client authentication. Use a runtime path (e.g. /run/secrets/…) to prevent the secret from being copied into the Nix store.";
     };
 
     volumes = lib.mkOption {
