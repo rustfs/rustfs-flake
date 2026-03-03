@@ -12,24 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{
-  config,
-  lib,
-  pkgs,
-  ...
+{ config
+, lib
+, pkgs
+, ...
 }:
 
 let
   cfg = config.services.rustfs;
 
   # Helper to handle volumes as list or string
-  volumesStr = if builtins.isList cfg.volumes
-               then lib.concatStringsSep "," cfg.volumes
-               else cfg.volumes;
+  volumesStr =
+    if builtins.isList cfg.volumes
+    then lib.concatStringsSep "," cfg.volumes
+    else cfg.volumes;
 
-  volumesList = if builtins.isList cfg.volumes
-                then cfg.volumes
-                else [ cfg.volumes ];
+  volumesList =
+    if builtins.isList cfg.volumes
+    then cfg.volumes
+    else [ cfg.volumes ];
 in
 {
   imports = [
@@ -157,7 +158,7 @@ in
     systemd.tmpfiles.rules = [
       "d ${cfg.tlsDirectory} 0750 ${cfg.user} ${cfg.group} -"
     ] ++ (map (vol: "d ${vol} 0750 ${cfg.user} ${cfg.group} -") volumesList)
-      ++ (lib.optional (cfg.logDirectory != null) "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -");
+    ++ (lib.optional (cfg.logDirectory != null) "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -");
 
     systemd.services.rustfs = {
       description = "RustFS Object Storage Server";
@@ -264,12 +265,14 @@ in
           ++ lib.optional (cfg.logDirectory != null) cfg.logDirectory;
 
         # Logging: Default to systemd journal, optionally write to files
-        StandardOutput = if cfg.logDirectory != null
-                         then "append:${cfg.logDirectory}/rustfs.log"
-                         else "journal";
-        StandardError = if cfg.logDirectory != null
-                        then "append:${cfg.logDirectory}/rustfs-err.log"
-                        else "journal";
+        StandardOutput =
+          if cfg.logDirectory != null
+          then "append:${cfg.logDirectory}/rustfs.log"
+          else "journal";
+        StandardError =
+          if cfg.logDirectory != null
+          then "append:${cfg.logDirectory}/rustfs-err.log"
+          else "journal";
       };
     };
   };

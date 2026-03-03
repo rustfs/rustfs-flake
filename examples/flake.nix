@@ -25,7 +25,7 @@
       system = "x86_64-linux";
       modules = [
         rustfs-flake.nixosModules.default
-        
+
         ({ config, pkgs, ... }: {
           # Secret files must live outside the Nix store so they are never world-readable.
           # Populate /run/secrets/rustfs-* before the service starts, for example with
