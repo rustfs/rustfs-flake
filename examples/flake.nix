@@ -33,12 +33,15 @@
           # a secrets backend.  The files only need to be readable by root/systemd because
           # the module uses systemd LoadCredential to hand them to the service.
           #
-          # Example with a NixOS activation script (for local testing only – never hardcode
-          # real credentials like this in production):
+          # Example with a NixOS activation script (for local testing only – never embed
+          # real credentials like this in Nix – fetch them from an external runtime source):
           #   system.activationScripts.rustfs-secrets = ''
           #     install -d -m 700 /run/secrets
-          #     echo -n "my-access-key"  > /run/secrets/rustfs-access-key
-          #     echo -n "my-secret-key"  > /run/secrets/rustfs-secret-key
+          #     # Example: populate secrets from environment variables or a secrets backend.
+          #     # The actual secret bytes must NOT appear in this Nix file.
+          #     # Using environment variables (set outside Nix) for local testing:
+          #     #   test -n "$RUSTFS_ACCESS_KEY" && printf '%s' "$RUSTFS_ACCESS_KEY" > /run/secrets/rustfs-access-key
+          #     #   test -n "$RUSTFS_SECRET_KEY" && printf '%s' "$RUSTFS_SECRET_KEY" > /run/secrets/rustfs-secret-key
           #     chmod 600 /run/secrets/rustfs-access-key /run/secrets/rustfs-secret-key
           #   '';
           #

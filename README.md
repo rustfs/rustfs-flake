@@ -123,12 +123,15 @@ The rustfs package providing the rustfs binary.
 **Example:** `/run/secrets/rustfs-access-key`
 
 Path to a file containing the access key for client authentication. Use a runtime path (e.g. /run/secrets/…) to prevent
-the secret from being copied into the Nix store. The file should be readable by the rustfs service user and contain only
-the access key without any trailing whitespace.
+the secret from being copied into the Nix store. The file must be readable by root/systemd — the module uses systemd
+`LoadCredential` to read it and expose a copy in the service's credential directory (`$CREDENTIALS_DIRECTORY`); the
+`rustfs` service user does not read the source file directly.
 
 For security best practices, use secret management tools like sops-nix, agenix, or NixOps keys.
 
-**Note:** The deprecated `accessKey` option has been removed for security reasons.
+**Note:** The `accessKey` option has been renamed to `accessKeyFile` via `mkRenamedOptionModule`. The old name now maps
+to this file-path option — plain-text secret strings are no longer accepted. A valid file path is required whenever
+`services.rustfs.enable = true`.
 
 ### services.rustfs.secretKeyFile
 
@@ -137,12 +140,15 @@ For security best practices, use secret management tools like sops-nix, agenix, 
 **Example:** `/run/secrets/rustfs-secret-key`
 
 Path to a file containing the secret key for client authentication. Use a runtime path (e.g. /run/secrets/…) to prevent
-the secret from being copied into the Nix store. The file should be readable by the rustfs service user and contain only
-the secret key without any trailing whitespace.
+the secret from being copied into the Nix store. The file must be readable by root/systemd — the module uses systemd
+`LoadCredential` to read it and expose a copy in the service's credential directory (`$CREDENTIALS_DIRECTORY`); the
+`rustfs` service user does not read the source file directly.
 
 For security best practices, use secret management tools like sops-nix, agenix, or NixOps keys.
 
-**Note:** The deprecated `secretKey` option has been removed for security reasons.
+**Note:** The `secretKey` option has been renamed to `secretKeyFile` via `mkRenamedOptionModule`. The old name now maps
+to this file-path option — plain-text secret strings are no longer accepted. A valid file path is required whenever
+`services.rustfs.enable = true`.
 
 ### services.rustfs.user
 
