@@ -78,7 +78,8 @@ in
       description = ''
         Path to a file containing the access key for client authentication.
         Use a runtime path (e.g. /run/secrets/…) to prevent the secret from being copied into the Nix store.
-        The file should be readable by the rustfs service user and contain only the access key without any trailing whitespace.
+        The file must be readable by root/systemd (not by the rustfs service user directly); systemd reads it
+        via LoadCredential and exposes a copy in the service's credential directory ($CREDENTIALS_DIRECTORY).
         For security best practices, use secret management tools like sops-nix, agenix, or NixOps keys.
       '';
     };
@@ -89,7 +90,8 @@ in
       description = ''
         Path to a file containing the secret key for client authentication.
         Use a runtime path (e.g. /run/secrets/…) to prevent the secret from being copied into the Nix store.
-        The file should be readable by the rustfs service user and contain only the secret key without any trailing whitespace.
+        The file must be readable by root/systemd (not by the rustfs service user directly); systemd reads it
+        via LoadCredential and exposes a copy in the service's credential directory ($CREDENTIALS_DIRECTORY).
         For security best practices, use secret management tools like sops-nix, agenix, or NixOps keys.
       '';
     };

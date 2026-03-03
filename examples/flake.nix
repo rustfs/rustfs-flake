@@ -27,16 +27,23 @@
         rustfs-flake.nixosModules.default
         
         ({ config, pkgs, ... }: {
-          # Create secret files for demonstration purposes
-          # In production, use sops-nix, agenix, or other secret management
-          environment.etc."rustfs-secrets/access-key" = {
-            text = "admin-access-key";
-            mode = "0400";
-          };
-          environment.etc."rustfs-secrets/secret-key" = {
-            text = "secure-secret-key";
-            mode = "0400";
-          };
+          # Secret files must live outside the Nix store so they are never world-readable.
+          # Populate /run/secrets/rustfs-* before the service starts, for example with
+          # sops-nix, agenix, or a simple activation script that writes the files from
+          # a secrets backend.  The files only need to be readable by root/systemd because
+          # the module uses systemd LoadCredential to hand them to the service.
+          #
+          # Example with a NixOS activation script (for local testing only – never hardcode
+          # real credentials like this in production):
+          #   system.activationScripts.rustfs-secrets = ''
+          #     install -d -m 700 /run/secrets
+          #     echo -n "my-access-key"  > /run/secrets/rustfs-access-key
+          #     echo -n "my-secret-key"  > /run/secrets/rustfs-secret-key
+          #     chmod 600 /run/secrets/rustfs-access-key /run/secrets/rustfs-secret-key
+          #   '';
+          #
+          # For production, prefer sops-nix (https://github.com/Mic92/sops-nix) or
+          # agenix (https://github.com/ryantm/agenix).
 
           services.rustfs = {
             enable = true;
@@ -48,8 +55,9 @@
             consoleAddress = "0.0.0.0:9001";
 
             # Use file-based secrets (required for security)
-            accessKeyFile = "/etc/rustfs-secrets/access-key";
-            secretKeyFile = "/etc/rustfs-secrets/secret-key";
+            # The files must exist at these paths before the service starts (see comment above)
+            accessKeyFile = "/run/secrets/rustfs-access-key";
+            secretKeyFile = "/run/secrets/rustfs-secret-key";
 
             logLevel = "info";
             # Logs default to systemd journal (journalctl -u rustfs)
