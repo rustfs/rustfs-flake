@@ -151,9 +151,9 @@ ProtectSystem = "strict";      # Make system read-only
 ProtectHome = true;            # No home directory access
 PrivateTmp = true;             # Private /tmp namespace
 ReadWritePaths = [             # Explicitly grant write access
-  cfg.logDirectory
   cfg.tlsDirectory
-] ++ volumesList;
+] ++ lib.optional (cfg.logDirectory != null) cfg.logDirectory
+  ++ volumesList;
 ```
 
 #### Kernel Protection

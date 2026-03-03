@@ -115,7 +115,7 @@ The RustFS NixOS module implements extensive systemd security hardening. The ser
 - **Memory protections**: `MemoryDenyWriteExecute = true`
 - **Network restrictions**: Only AF_INET, AF_INET6, and AF_UNIX allowed
 
-See the full list in [nixos/rustfs.nix](./nixos/rustfs.nix).
+See the full list in [nixos/rustfs.nix](../nixos/rustfs.nix).
 
 ### 4. File Permissions
 
@@ -123,11 +123,13 @@ The module automatically configures secure file permissions:
 
 ```nix
 # Directories are created with restrictive permissions
-systemd.tmpfiles.rules = [
-  "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -"
-  "d ${cfg.tlsDirectory} 0750 ${cfg.user} ${cfg.group} -"
-  "d ${volume} 0750 ${cfg.user} ${cfg.group} -"  # For each volume
-];
+systemd.tmpfiles.rules =
+  (lib.optional (cfg.logDirectory != null)
+    "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -")
+  ++ [
+    "d ${cfg.tlsDirectory} 0750 ${cfg.user} ${cfg.group} -"
+    "d ${volume} 0750 ${cfg.user} ${cfg.group} -"  # For each volume
+  ];
 ```
 
 ### 5. Network Security

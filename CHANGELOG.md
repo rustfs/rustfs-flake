@@ -87,10 +87,8 @@ Following community feedback on Issue #9, additional improvements aligned with N
 
 ### Changed
 
-- **BREAKING**: Removed `services.rustfs.accessKey` option (security risk)
-- **BREAKING**: Removed `services.rustfs.secretKey` option (security risk)
-- **BREAKING**: `accessKeyFile` is now required instead of optional
-- **BREAKING**: `secretKeyFile` is now required instead of optional
+- **Deprecated**: `services.rustfs.accessKey` is renamed to `services.rustfs.accessKeyFile` via `mkRenamedOptionModule`. The old name now maps to the *file path* option — plain-text secret strings are no longer accepted. A valid file path is required whenever `services.rustfs.enable = true`.
+- **Deprecated**: `services.rustfs.secretKey` is renamed to `services.rustfs.secretKeyFile` via `mkRenamedOptionModule`. The old name now maps to the *file path* option — plain-text secret strings are no longer accepted. A valid file path is required whenever `services.rustfs.enable = true`.
 - Default `volumes` changed from `"/tmp/rustfs"` to `"/var/lib/rustfs"` (persistent storage)
 - Console now defaults to localhost-only binding (`127.0.0.1:9001`)
 - Improved logging output to separate stdout and stderr streams

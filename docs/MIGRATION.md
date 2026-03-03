@@ -369,7 +369,7 @@ After migration, verify:
 If you encounter issues:
 
 1. Check the [SECURITY.md](./SECURITY.md) documentation
-2. Review the [example configuration](./examples/nixos-configuration.nix)
+2. Review the [example configuration](../examples/nixos-configuration.nix)
 3. Check service logs: `journalctl -u rustfs -f`
 4. Open an issue on GitHub with:
     - Your sanitized configuration (remove all secrets!)
