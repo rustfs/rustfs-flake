@@ -156,8 +156,7 @@ Restrict network access using NixOS firewall:
 ```nix
 networking.firewall = {
   enable = true;
-  allowedTCPPorts = [ 9000 ];  # API port
-  allowedTCPPorts = [ 9001 ];  # Console port (consider restricting to local only)
+  allowedTCPPorts = [ 9000 9001 ];  # API port and console port
 
   # Or use interfaces for more granular control
   interfaces.eth0.allowedTCPPorts = [ 9000 9001 ];
