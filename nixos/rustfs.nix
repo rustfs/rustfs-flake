@@ -36,12 +36,10 @@ in
     (lib.mkRenamedOptionModule
       [ "services" "rustfs" "accessKey" ]
       [ "services" "rustfs" "accessKeyFile" ]
-      "World readable secrets is insecure and should be replaced with references to files"
     )
     (lib.mkRenamedOptionModule
       [ "services" "rustfs" "secretKey" ]
       [ "services" "rustfs" "secretKeyFile" ]
-      "World readable secrets is insecure and should be replaced with references to files"
     )
   ];
 
@@ -145,7 +143,7 @@ in
 
   config = lib.mkIf cfg.enable {
     users.groups = lib.mkIf (cfg.group == "rustfs") {
-      rustfs = {};
+      rustfs = { };
     };
 
     users.users = lib.mkIf (cfg.user == "rustfs") {
