@@ -57,10 +57,9 @@
               sha256 = srcInfo.sha256;
             };
 
-            # Security & Build Tools:
+            # Build Tools:
             # - unzip: Required for extracting the source archive.
-            # - binutils: Provides 'strip' to remove symbols, reducing size and obscuring internal details.
-            nativeBuildInputs = [ pkgs.unzip pkgs.binutils ];
+            nativeBuildInputs = [ pkgs.unzip ];
 
             # The archive contains the binary at the root, so we set sourceRoot to current dir
             sourceRoot = ".";
@@ -71,11 +70,6 @@
               mkdir -p $out/bin
               install -m755 rustfs $out/bin/rustfs
 
-              # Security Hardening:
-              # Strip the binary to remove debugging symbols and symbol tables.
-              # This reduces the binary size and removes potentially sensitive build-time path information.
-              # We use '|| true' to prevent failure if the binary is already stripped or format is unrecognized.
-              strip $out/bin/rustfs || true
 
               runHook postInstall
             '';
@@ -86,8 +80,9 @@
               license = licenses.asl20;
               platforms = supportedSystems;
               mainProgram = "rustfs";
-              # Security: Explicitly declare that this package contains pre-compiled binaries.
-              # This helps users and audit tools identify non-source-built components.
+              # This package uses pre-compiled binaries downloaded from GitHub releases.
+              # The binaries are fetched from ${sources.downloadBase}/${sources.version}/
+              # and are not built from source in this flake.
               sourceProvenance = [ sourceTypes.binaryNativeCode ];
             };
           };

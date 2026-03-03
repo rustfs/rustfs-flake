@@ -27,6 +27,17 @@
         rustfs-flake.nixosModules.default
         
         ({ config, pkgs, ... }: {
+          # Create secret files for demonstration purposes
+          # In production, use sops-nix, agenix, or other secret management
+          environment.etc."rustfs-secrets/access-key" = {
+            text = "admin-access-key";
+            mode = "0400";
+          };
+          environment.etc."rustfs-secrets/secret-key" = {
+            text = "secure-secret-key";
+            mode = "0400";
+          };
+
           services.rustfs = {
             enable = true;
             package = rustfs-flake.packages.${pkgs.stdenv.hostPlatform.system}.default;
@@ -36,10 +47,12 @@
             consoleEnable = true;
             consoleAddress = "0.0.0.0:9001";
 
-            accessKey = "admin-access-key";
-            secretKey = "secure-secret-key";
+            # Use file-based secrets (required for security)
+            accessKeyFile = "/etc/rustfs-secrets/access-key";
+            secretKeyFile = "/etc/rustfs-secrets/secret-key";
 
             logLevel = "info";
+            # Logs default to systemd journal (journalctl -u rustfs)
           };
 
           networking.firewall.allowedTCPPorts = [ 9000 9001 ];
