@@ -71,7 +71,7 @@ jobs:
           for system in "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"; do
             FILE_NAME=$(jq -r --arg sys "$system" '.files[$sys].name' sources.json.new)
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
-            
+          
             echo "Fetching hash for $URL..."
             # Get base32 hash from nix-prefetch-url and convert to hex (base16)
             BASE32_HASH=$(nix-prefetch-url --type sha256 "$URL")
@@ -84,6 +84,13 @@ jobs:
           mv sources.json.new sources.json
           echo "updated=true" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate updated flake and example
+        if: steps.update_script.outputs.updated == 'true'
+        run: |
+          nix flake check --no-build
+          cd examples
+          nix eval .#nixosConfigurations.example-host.config.services.rustfs.enable
 
       - name: Clean up Git credentials
         run: git config --local --unset-all http.https://github.com/.extraheader || true
@@ -102,8 +109,11 @@ jobs:
           body: |
             ## Description
             Automated update of RustFS binaries to version `${{ steps.update_script.outputs.version }}`.
-            
+
             Verified SHA256 hashes (Hex format) for all platforms.
+            Validation passed:
+            - `nix flake check --no-build`
+            - `examples` flake service evaluation
           labels: |
             dependencies
             automated-pr
