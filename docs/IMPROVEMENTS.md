@@ -49,8 +49,8 @@ environment = {
 # Before: Shell script wrapper reading from $CREDENTIALS_DIRECTORY
 # After: Direct environment variable with %d placeholder
 environment = {
-  RUSTFS_ACCESS_KEY = "file:%d/access-key";
-  RUSTFS_SECRET_KEY = "file:%d/secret-key";
+  RUSTFS_ACCESS_KEY_FILE = "%d/access-key";
+  RUSTFS_SECRET_KEY_FILE = "%d/secret-key";
 };
 ExecStart = "${cfg.package}/bin/rustfs";  # Direct execution
 ```
@@ -102,8 +102,8 @@ LoadCredential = [
 # Secrets referenced via %d placeholder in environment variables
 # This is cleaner and more idiomatic than using a shell script wrapper
 environment = {
-  RUSTFS_ACCESS_KEY = "file:%d/access-key";
-  RUSTFS_SECRET_KEY = "file:%d/secret-key";
+  RUSTFS_ACCESS_KEY_FILE = "%d/access-key";
+  RUSTFS_SECRET_KEY_FILE = "%d/secret-key";
   # ...other environment variables
 };
 

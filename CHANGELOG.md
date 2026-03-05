@@ -33,7 +33,7 @@ Following community feedback on Issue #9, additional improvements aligned with N
 
 - Eliminated `pkgs.writeShellScript` wrapper for credential loading
 - Uses systemd's `%d` placeholder for credentials directory
-- Cleaner implementation: `RUSTFS_ACCESS_KEY = "file:%d/access-key"`
+- Cleaner implementation: `RUSTFS_ACCESS_KEY_FILE = "%d/access-key"`
 - Direct binary execution without wrapper script
 
 #### Default to Systemd Journal Logging
