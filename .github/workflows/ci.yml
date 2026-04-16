@@ -51,7 +51,8 @@ jobs:
       - name: Evaluate example configuration
         run: |
           cd examples
-          nix eval .#nixosConfigurations.example-host.config.services.rustfs.enable
+          nix eval --override-input rustfs-flake "path:${GITHUB_WORKSPACE}" \
+          .#nixosConfigurations.example-host.config.services.rustfs.enable
 
   build-linux-package:
     name: Build Linux package
