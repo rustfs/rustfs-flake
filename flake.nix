@@ -39,7 +39,7 @@
 
       # Overlays for extending nixpkgs
       overlays.default = final: prev: {
-        rustfs = self.packages.${prev.system}.default;
+        rustfs = self.packages.${prev.stdenv.hostPlatform.system}.default;
       };
 
       packages = forAllSystems (system:
