@@ -100,8 +100,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: update sources.json to ${{ steps.update_script.outputs.version }}"
-          committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-          author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          committer: "houseme <housemecn@gmail.com>"
+          author: "houseme <housemecn@gmail.com>"
           branch: "automation/update-sources-${{ steps.update_script.outputs.version }}"
           delete-branch: true
           title: "chore: update rustfs to ${{ steps.update_script.outputs.version }}"
