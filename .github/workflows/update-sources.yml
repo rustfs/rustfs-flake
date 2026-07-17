@@ -43,13 +43,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO="rustfs/rustfs"
-          LATEST_RELEASE=$(gh api repos/$REPO/releases --jq 'first')
+          LATEST_RELEASE=$(gh api "repos/$REPO/releases" --jq 'first')
           VERSION=$(echo "$LATEST_RELEASE" | jq -r '.tag_name')
           CURRENT_VERSION=$(jq -r '.version' sources.json)
 
           if [ "$VERSION" == "$CURRENT_VERSION" ]; then
             echo "Already up to date ($VERSION)"
-            echo "updated=false" >> $GITHUB_OUTPUT
+            echo "updated=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -62,16 +62,15 @@ jobs:
             "files": {
               "x86_64-linux": { "name": "rustfs-linux-x86_64-musl-latest.zip" },
               "aarch64-linux": { "name": "rustfs-linux-aarch64-musl-latest.zip" },
-              "x86_64-darwin": { "name": "rustfs-macos-x86_64-latest.zip" },
               "aarch64-darwin": { "name": "rustfs-macos-aarch64-latest.zip" }
             }
           }
           EOF
 
-          for system in "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"; do
+          for system in "x86_64-linux" "aarch64-linux" "aarch64-darwin"; do
             FILE_NAME=$(jq -r --arg sys "$system" '.files[$sys].name' sources.json.new)
             URL="https://github.com/$REPO/releases/download/$VERSION/$FILE_NAME"
-          
+
             echo "Fetching hash for $URL..."
             # Get base32 hash from nix-prefetch-url and convert to hex (base16)
             BASE32_HASH=$(nix-prefetch-url --type sha256 "$URL")
@@ -82,8 +81,8 @@ jobs:
           done
 
           mv sources.json.new sources.json
-          echo "updated=true" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Validate updated flake and example
         if: steps.update_script.outputs.updated == 'true'
