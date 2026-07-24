@@ -45,24 +45,17 @@ jobs:
           REPO="rustfs/rustfs"
           LATEST_RELEASE=$(gh api "repos/$REPO/releases" --jq 'first')
           VERSION=$(echo "$LATEST_RELEASE" | jq -r '.tag_name')
-          CURRENT_VERSION=$(jq -r '.version' sources.json)
 
-          if [ "$VERSION" == "$CURRENT_VERSION" ]; then
-            echo "Already up to date ($VERSION)"
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Updating to $VERSION..."
+          echo "Checking sources for $VERSION..."
 
           cat <<EOF > sources.json.new
           {
             "version": "$VERSION",
             "downloadBase": "https://github.com/$REPO/releases/download",
             "files": {
-              "x86_64-linux": { "name": "rustfs-linux-x86_64-musl-latest.zip" },
-              "aarch64-linux": { "name": "rustfs-linux-aarch64-musl-latest.zip" },
-              "aarch64-darwin": { "name": "rustfs-macos-aarch64-latest.zip" }
+              "x86_64-linux": { "name": "rustfs-linux-x86_64-musl-v$VERSION.zip" },
+              "aarch64-linux": { "name": "rustfs-linux-aarch64-musl-v$VERSION.zip" },
+              "aarch64-darwin": { "name": "rustfs-macos-aarch64-v$VERSION.zip" }
             }
           }
           EOF
@@ -79,6 +72,13 @@ jobs:
             jq --arg sys "$system" --arg hash "$HASH" '.files[$sys].sha256 = $hash' sources.json.new > sources.json.tmp
             mv sources.json.tmp sources.json.new
           done
+
+          if cmp -s sources.json sources.json.new; then
+            echo "sources.json already matches $VERSION"
+            rm sources.json.new
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           mv sources.json.new sources.json
           echo "updated=true" >> "$GITHUB_OUTPUT"
