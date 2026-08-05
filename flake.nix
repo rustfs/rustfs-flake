@@ -45,6 +45,7 @@
         let
           pkgs = import nixpkgs { inherit system; };
           srcInfo = sources.files.${system} or (throw "Unsupported system: ${system}");
+          isDarwin = pkgs.stdenvNoCC.hostPlatform.isDarwin;
         in
         {
           default = pkgs.stdenvNoCC.mkDerivation {
@@ -56,9 +57,11 @@
               sha256 = srcInfo.sha256;
             };
 
-            # Build Tools:
-            # - unzip: Required for extracting the source archive.
-            nativeBuildInputs = [ pkgs.unzip ];
+            nativeBuildInputs =
+              [ pkgs.unzip ]
+              ++ pkgs.lib.optionals isDarwin [
+                pkgs.darwin.cctools
+              ];
 
             # The archive contains the binary at the root, so we set sourceRoot to current dir
             sourceRoot = ".";
@@ -69,6 +72,13 @@
               mkdir -p $out/bin
               install -m755 rustfs $out/bin/rustfs
 
+              ${pkgs.lib.optionalString isDarwin ''
+                mkdir -p $out/lib
+                cp ${pkgs.xz.out}/lib/liblzma.5.dylib $out/lib/
+                install_name_tool -change /opt/homebrew/opt/xz/lib/liblzma.5.dylib \
+                  @executable_path/../lib/liblzma.5.dylib \
+                  $out/bin/rustfs
+              ''}
 
               runHook postInstall
             '';
