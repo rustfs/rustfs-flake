@@ -21,16 +21,25 @@
 let
   cfg = config.services.rustfs;
 
-  # Helper to handle volumes as list or string
-  volumesStr =
-    if builtins.isList cfg.volumes
-    then lib.concatStringsSep "," cfg.volumes
-    else cfg.volumes;
+  dist = cfg.distributed;
 
-  volumesList =
-    if builtins.isList cfg.volumes
-    then cfg.volumes
-    else [ cfg.volumes ];
+  configuredVolumes =
+    if builtins.isList cfg.volumes then
+      cfg.volumes
+    else
+      lib.filter (v: v != "") (lib.splitString "," cfg.volumes);
+
+  localVolumes = if dist.enable then dist.volumes else configuredVolumes;
+
+  # Every node must be given the identical endpoint list, ordered drive-major so an
+  # erasure set spans nodes instead of sitting on one.
+  endpoints = lib.concatMap
+    (
+      volume: map (node: "http://${node}:${toString dist.port}${volume}") dist.nodes
+    )
+    dist.volumes;
+
+  volumesStr = lib.concatStringsSep " " (if dist.enable then endpoints else configuredVolumes);
 in
 {
   imports = [
@@ -101,6 +110,59 @@ in
       description = "List of paths or comma-separated string where RustFS stores data.";
     };
 
+    distributed = {
+      enable = lib.mkEnableOption "a distributed RustFS cluster spanning several nodes";
+
+      nodes = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [
+          "node1"
+          "node2"
+          "node3"
+          "node4"
+        ];
+        description = ''
+          Hostnames of every node in the cluster, resolvable from each of them.
+          Used to render the shared endpoint list; set identically on all nodes.
+        '';
+      };
+
+      volumes = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [
+          "/mnt/disk0"
+          "/mnt/disk1"
+          "/mnt/disk2"
+          "/mnt/disk3"
+        ];
+        description = ''
+          Drive paths present on each node, each on its own filesystem. Every node
+          uses the same layout, so this replaces `volumes` when distributed mode is
+          enabled and is what gets created and made writable locally.
+        '';
+      };
+
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 9000;
+        description = "Port peers reach each other on, matching `address`.";
+      };
+
+      localEndpointHost = lib.mkOption {
+        type = lib.types.str;
+        default = config.networking.hostName;
+        defaultText = lib.literalExpression "config.networking.hostName";
+        description = ''
+          Which entry of `nodes` identifies this machine, so it claims its own
+          drives instead of reaching them over RPC. Required whenever `address`
+          binds a wildcard such as `0.0.0.0`, since RustFS cannot infer its
+          identity from that and would otherwise treat every drive as remote.
+        '';
+      };
+    };
+
     address = lib.mkOption {
       type = lib.types.str;
       default = ":9000";
@@ -143,6 +205,22 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Erasure coding needs 4 drives; a distributed cluster needs 4 nodes of 4.
+    assertions = [
+      {
+        assertion = dist.enable -> builtins.length dist.nodes >= 4;
+        message = "services.rustfs.distributed.nodes needs at least 4 nodes, got ${toString (builtins.length dist.nodes)}.";
+      }
+      {
+        assertion = dist.enable -> builtins.length dist.volumes >= 4;
+        message = "services.rustfs.distributed.volumes needs at least 4 drives per node, got ${toString (builtins.length dist.volumes)}.";
+      }
+      {
+        assertion = dist.enable -> builtins.elem dist.localEndpointHost dist.nodes;
+        message = "services.rustfs.distributed.localEndpointHost is ${dist.localEndpointHost}, which is not one of nodes (${lib.concatStringsSep ", " dist.nodes}).";
+      }
+    ];
+
     users.groups = lib.mkIf (cfg.group == "rustfs") {
       rustfs = { };
     };
@@ -157,8 +235,12 @@ in
 
     systemd.tmpfiles.rules = [
       "d ${cfg.tlsDirectory} 0750 ${cfg.user} ${cfg.group} -"
-    ] ++ (map (vol: "d ${vol} 0750 ${cfg.user} ${cfg.group} -") volumesList)
-    ++ (lib.optional (cfg.logDirectory != null) "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -");
+    ]
+    ++ (map (vol: "d ${vol} 0750 ${cfg.user} ${cfg.group} -") localVolumes)
+    ++ (lib.optional
+      (
+        cfg.logDirectory != null
+      ) "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -");
 
     systemd.services.rustfs = {
       description = "RustFS Object Storage Server";
@@ -177,9 +259,14 @@ in
         # Use %d to reference the credentials directory set by LoadCredential
         RUSTFS_ACCESS_KEY_FILE = "%d/access-key";
         RUSTFS_SECRET_KEY_FILE = "%d/secret-key";
-      } // lib.optionalAttrs (cfg.logDirectory != null) {
+      }
+      // lib.optionalAttrs (cfg.logDirectory != null) {
         RUSTFS_OBS_LOG_DIRECTORY = cfg.logDirectory;
-      } // cfg.extraEnvironmentVariables;
+      }
+      // lib.optionalAttrs dist.enable {
+        RUSTFS_LOCAL_ENDPOINT_HOST = dist.localEndpointHost;
+      }
+      // cfg.extraEnvironmentVariables;
 
       serviceConfig = {
         User = cfg.user;
@@ -239,10 +326,18 @@ in
         ProtectProc = "invisible";
         # Make system directories read-only except for paths we explicitly allow
         ProtectSystem = "strict";
-        # Restrict /proc access
-        ProcSubset = "pid";
+        # Restrict /proc access; multi-drive setups need /proc/mounts for rustfs'
+        # cross-device mount validation, which "pid" hides.
+        ProcSubset = if builtins.length localVolumes > 1 then "all" else "pid";
         # Restrict network address families to what's needed
-        RestrictAddressFamilies = [ "AF_INET" "AF_INET6" "AF_UNIX" ];
+        # AF_NETLINK: getifaddrs needs it to enumerate local interfaces, which is how
+        # RustFS decides which endpoints are its own drives rather than a peer's.
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+          "AF_NETLINK"
+        ];
         # Restrict namespaces
         RestrictNamespaces = true;
         # Prevent realtime scheduling
@@ -252,7 +347,11 @@ in
         # Restrict to native system calls only
         SystemCallArchitectures = "native";
         # Allow only safe system calls
-        SystemCallFilter = [ "@system-service" "~@privileged" "~@resources" ];
+        SystemCallFilter = [
+          "@system-service"
+          "~@privileged"
+          "~@resources"
+        ];
         # Prevent memory mapping executable
         MemoryDenyWriteExecute = true;
         # Prevent personality changes
@@ -261,18 +360,17 @@ in
         UMask = "0077";
 
         # Grant write access to necessary directories
-        ReadWritePaths = [ cfg.tlsDirectory ] ++ volumesList
-          ++ lib.optional (cfg.logDirectory != null) cfg.logDirectory;
+        ReadWritePaths = [
+          cfg.tlsDirectory
+        ]
+        ++ localVolumes
+        ++ lib.optional (cfg.logDirectory != null) cfg.logDirectory;
 
         # Logging: Default to systemd journal, optionally write to files
         StandardOutput =
-          if cfg.logDirectory != null
-          then "append:${cfg.logDirectory}/rustfs.log"
-          else "journal";
+          if cfg.logDirectory != null then "append:${cfg.logDirectory}/rustfs.log" else "journal";
         StandardError =
-          if cfg.logDirectory != null
-          then "append:${cfg.logDirectory}/rustfs-err.log"
-          else "journal";
+          if cfg.logDirectory != null then "append:${cfg.logDirectory}/rustfs-err.log" else "journal";
       };
     };
   };

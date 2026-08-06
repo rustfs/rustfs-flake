@@ -12,6 +12,8 @@ RustFS NixOS module with secure secret management and systemd hardening.
 - **[docs/MIGRATION.md](./docs/MIGRATION.md)** - Migrating from old insecure configuration
 - **[docs/IMPROVEMENTS.md](./docs/IMPROVEMENTS.md)** - Technical implementation details
 - **[examples/nixos-configuration.nix](./examples/nixos-configuration.nix)** - Example secure configuration
+- **[examples/single-node-multi-disk.nix](./examples/single-node-multi-disk.nix)** - One node, four drives (erasure coding)
+- **[examples/distributed-cluster.nix](./examples/distributed-cluster.nix)** - Four-node cluster, four drives per node
 
 ## Features
 
@@ -172,7 +174,66 @@ Group under which RustFS runs.
 
 **Default:** `["/var/lib/rustfs"]`
 
-List of paths or comma-separated string where RustFS stores data. Use persistent locations, not /tmp.
+List of paths or comma-separated string where RustFS stores data. Use persistent locations, not /tmp. Each entry must be
+its own filesystem; several entries on one disk give no redundancy. Erasure coding needs at least 4 drives. Ignored when
+`distributed.enable` is set — use `distributed.volumes` instead.
+
+### services.rustfs.distributed.enable
+
+**Type:** `bool`
+
+**Default:** `false`
+
+Whether to run as part of a distributed RustFS cluster spanning several nodes. When enabled, the module renders the
+shared endpoint list (`http://<node>:<port><volume>` for every node × volume pair) that all nodes must agree on, ordered
+drive-major so an erasure set spans nodes instead of sitting on one.
+
+See [examples/distributed-cluster.nix](./examples/distributed-cluster.nix) for a complete four-node configuration.
+
+### services.rustfs.distributed.nodes
+
+**Type:** `list of strings`
+
+**Default:** `[]`
+
+**Example:** `["node1" "node2" "node3" "node4"]`
+
+Hostnames of every node in the cluster, resolvable from each of them. Set identically on all nodes — the endpoint list is
+rendered from this and must come out byte-identical cluster-wide. At least 4 nodes are required.
+
+### services.rustfs.distributed.volumes
+
+**Type:** `list of strings`
+
+**Default:** `[]`
+
+**Example:** `["/mnt/disk0" "/mnt/disk1" "/mnt/disk2" "/mnt/disk3"]`
+
+Drive paths present on each node, each on its own filesystem. Every node uses the same layout, so this replaces
+`volumes` in distributed mode and is what gets created and made writable locally. At least 4 drives per node are
+required.
+
+### services.rustfs.distributed.port
+
+**Type:** `port`
+
+**Default:** `9000`
+
+Port peers reach each other on. Must match the port in `address`, and be open between nodes in the firewall.
+
+### services.rustfs.distributed.localEndpointHost
+
+**Type:** `string`
+
+**Default:** `config.networking.hostName`
+
+Which entry of `nodes` identifies this machine, so it claims its own drives instead of reaching them over RPC. Required
+whenever `address` binds a wildcard such as `0.0.0.0`, since RustFS cannot infer its identity from that and would
+otherwise treat every drive as remote.
+
+> **Note**: All nodes must share the *same* access/secret key pair, and it must not be the default
+> `rustfsadmin`/`rustfsadmin` — RustFS derives the inter-node RPC secret from the credentials and refuses to derive one
+> from the defaults.
 
 ### services.rustfs.address
 
