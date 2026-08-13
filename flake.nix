@@ -30,6 +30,9 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      forLinuxSystems = nixpkgs.lib.genAttrs (
+        nixpkgs.lib.filter (nixpkgs.lib.hasSuffix "-linux") supportedSystems
+      );
     in
     {
       # Standard NixOS Module
@@ -95,6 +98,13 @@
               sourceProvenance = [ sourceTypes.binaryNativeCode ];
             };
           };
+        }
+      );
+
+      checks = forLinuxSystems (system:
+        import ./tests {
+          inherit self;
+          pkgs = import nixpkgs { inherit system; };
         }
       );
 
