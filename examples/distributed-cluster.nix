@@ -15,17 +15,15 @@
 # RustFS distributed cluster NixOS Configuration Example
 #
 # Four nodes with four drives each. This exact file is imported by every node —
-# `services.rustfs.distributed` is deliberately identical everywhere, and the
+# `services.rustfs.pools` is deliberately identical everywhere, and the
 # module derives each node's identity from `networking.hostName`.
 #
 # Requirements the module asserts at evaluation time:
-#   - at least 4 nodes in `distributed.nodes`
-#   - at least 4 drives in `distributed.volumes`
-#   - `distributed.localEndpointHost` is one of `distributed.nodes`
+#   - at least 4 nodes and 4 drives in the pool
 #
 # Additional requirements the module cannot check for you:
 #   - every hostname in `nodes` resolves from every other node (DNS or
-#     `networking.hosts`), and `distributed.port` is reachable between them
+#     `networking.hosts`), and `port` is reachable between them
 #   - the access/secret key pair is identical on all nodes, and is *not* the
 #     default rustfsadmin/rustfsadmin — RustFS derives the inter-node RPC secret
 #     from the credentials and refuses to derive one from the defaults
@@ -68,25 +66,22 @@ in
   services.rustfs = {
     enable = true;
 
-    distributed = {
-      enable = true;
+    # One pool spanning the fleet. The module expands it into the shared
+    # endpoint list (http://<node>:<port><volume>) every node must agree on.
+    # Appending a second pool here is how the cluster grows later; RustFS works
+    # out which drives are this machine's by resolving the endpoint hosts.
+    pools = [ { inherit nodes volumes; } ];
 
-      # Replaces `volumes` when distributed mode is on: these are the local
-      # drives, and the module expands them into the shared endpoint list
-      # (http://<node>:<port><volume>) that every node must agree on.
-      inherit nodes volumes;
+    port = 9000;
 
-      port = 9000;
+    # Sets of four across sixteen drives, two of them parity. Because the module
+    # lays the endpoints out drive-major, a set spans the four nodes rather than
+    # sitting on one, so a whole node can go away and writes still have quorum.
+    erasureSetDriveCount = 4;
+    storageClassStandardParity = 2;
+    storageClassRrsParity = 1;
 
-      # Which entry of `nodes` is this machine. The default is
-      # config.networking.hostName, which is correct as long as the hostname
-      # matches the name used in `nodes`. Set it explicitly when it does not —
-      # required whenever `address` binds a wildcard, since RustFS cannot infer
-      # its own identity from 0.0.0.0 and would treat every drive as remote.
-      localEndpointHost = config.networking.hostName;
-    };
-
-    # Must bind an address peers can reach, on `distributed.port`.
+    # Must bind an address peers can reach, on `port`.
     address = "0.0.0.0:9000";
 
     # SECURITY: Bind console to localhost only, access via SSH tunnel

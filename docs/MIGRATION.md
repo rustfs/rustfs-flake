@@ -123,7 +123,7 @@ services.rustfs = {
   enable = true;
   accessKey = "rustfsadmin";  # ❌ INSECURE!
   secretKey = "rustfsadmin";  # ❌ INSECURE!
-  volumes = "/tmp/rustfs";
+  pools = [ { volumes = [ "/tmp/rustfs" ]; } ];
   address = ":9000";
 };
 ```
@@ -159,7 +159,7 @@ services.rustfs = {
     enable = true;
     accessKeyFile = config.sops.secrets.rustfs-access-key.path;  # ✅ SECURE
     secretKeyFile = config.sops.secrets.rustfs-secret-key.path;  # ✅ SECURE
-    volumes = "/var/lib/rustfs";  # Use persistent storage
+    pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];  # Use persistent storage
     address = ":9000";
     consoleAddress = "127.0.0.1:9001";  # Localhost only
   };
@@ -194,7 +194,7 @@ services.rustfs = {
     enable = true;
     accessKeyFile = config.age.secrets.rustfs-access-key.path;
     secretKeyFile = config.age.secrets.rustfs-secret-key.path;
-    volumes = "/var/lib/rustfs";
+    pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];
     address = ":9000";
   };
 }
@@ -207,7 +207,7 @@ services.rustfs = {
   enable = true;
   accessKeyFile = "/run/secrets/rustfs-access-key";
   secretKeyFile = "/run/secrets/rustfs-secret-key";
-  volumes = "/var/lib/rustfs";
+  pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];
   address = ":9000";
 };
 ```
