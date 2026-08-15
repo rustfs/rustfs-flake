@@ -28,14 +28,16 @@ pkgs.testers.runNixOSTest {
       boot.supportedFilesystems = [ "xfs" ];
 
       virtualisation.fileSystems = lib.listToAttrs (
-        lib.imap0 (
-          i: disk:
-          lib.nameValuePair (builtins.elemAt volumes i) {
-            device = "/dev/${disk}";
-            fsType = "xfs";
-            autoFormat = true;
-          }
-        ) disks
+        lib.imap0
+          (
+            i: disk:
+              lib.nameValuePair (builtins.elemAt volumes i) {
+                device = "/dev/${disk}";
+                fsType = "xfs";
+                autoFormat = true;
+              }
+          )
+          disks
       );
 
       services.rustfs = {

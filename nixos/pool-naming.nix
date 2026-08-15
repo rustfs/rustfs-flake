@@ -8,9 +8,12 @@ lib.fix (finalAttrs: {
     strs:
     let
       first = builtins.head strs;
-      shortest = lib.foldl' (
-        n: s: lib.min n (builtins.stringLength s)
-      ) (builtins.stringLength first) strs;
+      shortest = lib.foldl'
+        (
+          n: s: lib.min n (builtins.stringLength s)
+        )
+        (builtins.stringLength first)
+        strs;
       matchesAt = n: lib.all (s: builtins.substring n 1 s == builtins.substring n 1 first) strs;
       go = n: if n >= shortest || !(matchesAt n) then n else go (n + 1);
     in

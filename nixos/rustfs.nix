@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{
-  config,
-  lib,
-  pkgs,
-  ...
+{ config
+, lib
+, pkgs
+, ...
 }:
 
 let
@@ -41,9 +40,11 @@ let
     ;
 
   # Both only matter past a single pool, where each has to be one expression.
-  nameLists = lib.concatMap (
-    pool: [ pool.volumes ] ++ lib.optional (pool.nodes != [ ]) pool.nodes
-  ) pools;
+  nameLists = lib.concatMap
+    (
+      pool: [ pool.volumes ] ++ lib.optional (pool.nodes != [ ]) pool.nodes
+    )
+    pools;
 
   unrangeable = builtins.filter (items: !rangeable items) nameLists;
   mixedPadding = builtins.filter (items: rangeable items && !consistentlyPadded items) nameLists;
@@ -89,7 +90,7 @@ in
 
     # volumes predates the pool model
     (lib.mkChangedOptionModule [ "services" "rustfs" "volumes" ] [ "services" "rustfs" "pools" ]
-      (config: [ { volumes = config.services.rustfs.volumes; } ])
+      (config: [{ volumes = config.services.rustfs.volumes; }])
     )
   ];
 
@@ -355,9 +356,10 @@ in
       "d ${cfg.tlsDirectory} 0750 ${cfg.user} ${cfg.group} -"
     ]
     ++ (map (vol: "d ${vol} 0750 ${cfg.user} ${cfg.group} -") localVolumes)
-    ++ (lib.optional (
-      cfg.logDirectory != null
-    ) "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -");
+    ++ (lib.optional
+      (
+        cfg.logDirectory != null
+      ) "d ${cfg.logDirectory} 0750 ${cfg.user} ${cfg.group} -");
 
     systemd.services.rustfs = {
       description = "RustFS Object Storage Server";

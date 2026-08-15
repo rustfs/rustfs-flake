@@ -61,12 +61,16 @@ let
     base: start: count: width:
     map (i: "${base}${pad width (start + i)}") (lib.range 0 (count - 1));
 
-  swept = lib.concatMap (
-    base:
-    lib.concatMap (
-      start: lib.concatMap (count: map (width: nameList base start count width) widths) counts
-    ) starts
-  ) bases;
+  swept = lib.concatMap
+    (
+      base:
+      lib.concatMap
+        (
+          start: lib.concatMap (count: map (width: nameList base start count width) widths) counts
+        )
+        starts
+    )
+    bases;
 
   # Both predicates together are what the module asserts before rendering.
   nameable = items: naming.rangeable items && naming.consistentlyPadded items;
@@ -118,17 +122,19 @@ let
     ]
   ];
 
-  roundTripFailures = lib.concatMap (
-    items:
-    let
-      got = expand (naming.ellipsisOf items);
-    in
-    lib.optional (!(nameable items) || got != items) {
-      inherit items got;
-      rangeable = naming.rangeable items;
-      consistentlyPadded = naming.consistentlyPadded items;
-    }
-  ) swept;
+  roundTripFailures = lib.concatMap
+    (
+      items:
+      let
+        got = expand (naming.ellipsisOf items);
+      in
+      lib.optional (!(nameable items) || got != items) {
+        inherit items got;
+        rangeable = naming.rangeable items;
+        consistentlyPadded = naming.consistentlyPadded items;
+      }
+    )
+    swept;
 
   wronglyAccepted = builtins.filter nameable refused;
 

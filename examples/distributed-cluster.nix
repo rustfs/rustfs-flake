@@ -70,7 +70,7 @@ in
     # endpoint list (http://<node>:<port><volume>) every node must agree on.
     # Appending a second pool here is how the cluster grows later; RustFS works
     # out which drives are this machine's by resolving the endpoint hosts.
-    pools = [ { inherit nodes volumes; } ];
+    pools = [{ inherit nodes volumes; }];
 
     port = 9000;
 
