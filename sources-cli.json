@@ -1,0 +1,18 @@
+{
+  "version": "0.1.31",
+  "downloadBase": "https://github.com/rustfs/cli/releases/download",
+  "files": {
+    "x86_64-linux": {
+      "name": "rustfs-cli-linux-amd64-v0.1.31.tar.gz",
+      "sha256": "129ac825f495fe44583505233d849045f7fc1801edb483a042cee7a563e922d7"
+    },
+    "aarch64-linux": {
+      "name": "rustfs-cli-linux-arm64-v0.1.31.tar.gz",
+      "sha256": "04803754ffd8b3699392bacec04276ab75f200b71177e03141dcdf9718f3e8b9"
+    },
+    "aarch64-darwin": {
+      "name": "rustfs-cli-macos-arm64-v0.1.31.tar.gz",
+      "sha256": "d8068d9396f14bdf67c3fe2e26c8f3f306b6d22442cd8387e2c12498ab3dad09"
+    }
+  }
+}
