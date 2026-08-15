@@ -37,12 +37,13 @@ let
     services.rustfs = {
       enable = true;
       package = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      distributed = {
-        enable = true;
-        nodes = hosts;
-        volumes = localVolumes;
-        port = 9000;
-      };
+      pools = [
+        {
+          nodes = hosts;
+          volumes = localVolumes;
+        }
+      ];
+      port = 9000;
       address = "0.0.0.0:9000";
       consoleEnable = false;
       accessKeyFile = "/etc/rustfs-access-key";
