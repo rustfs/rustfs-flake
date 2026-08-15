@@ -186,10 +186,10 @@ Use appropriate volume locations:
 ```nix
 services.rustfs = {
   # ❌ Bad - temporary storage
-  volumes = "/tmp/rustfs";
+  pools = [ { volumes = [ "/tmp/rustfs" ]; } ];
 
   # ✅ Good - persistent storage with proper permissions
-  volumes = "/var/lib/rustfs";
+  pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];
 
   # ✅ Also good - multiple volumes
   volumes = [ "/mnt/storage1" "/mnt/storage2" ];

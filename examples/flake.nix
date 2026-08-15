@@ -52,7 +52,7 @@
             enable = true;
             package = rustfs-flake.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
-            volumes = "/var/lib/rustfs/data";
+            pools = [{ volumes = [ "/var/lib/rustfs/data" ]; }];
             address = "0.0.0.0:9000";
             consoleEnable = true;
             consoleAddress = "0.0.0.0:9001";

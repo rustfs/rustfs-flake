@@ -21,9 +21,12 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    { self, nixpkgs }:
     let
       sources = builtins.fromJSON (builtins.readFile ./sources.json);
+      # Separate file: the CLI releases on its own cadence, in its own repository.
+      cliSources = builtins.fromJSON (builtins.readFile ./sources-cli.json);
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -44,10 +47,12 @@
         rustfs = self.packages.${prev.stdenv.hostPlatform.system}.default;
       };
 
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = import nixpkgs { inherit system; };
           srcInfo = sources.files.${system} or (throw "Unsupported system: ${system}");
+          cliSrcInfo = cliSources.files.${system} or (throw "Unsupported system: ${system}");
           isDarwin = pkgs.stdenvNoCC.hostPlatform.isDarwin;
         in
         {
@@ -60,11 +65,12 @@
               sha256 = srcInfo.sha256;
             };
 
-            nativeBuildInputs =
-              [ pkgs.unzip ]
-              ++ pkgs.lib.optionals isDarwin [
-                pkgs.darwin.cctools
-              ];
+            nativeBuildInputs = [
+              pkgs.unzip
+            ]
+            ++ pkgs.lib.optionals isDarwin [
+              pkgs.darwin.cctools
+            ];
 
             # The archive contains the binary at the root, so we set sourceRoot to current dir
             sourceRoot = ".";
@@ -98,22 +104,62 @@
               sourceProvenance = [ sourceTypes.binaryNativeCode ];
             };
           };
+
+          cli = pkgs.stdenvNoCC.mkDerivation {
+            pname = "rustfs-cli";
+            version = cliSources.version;
+
+            src = pkgs.fetchurl {
+              url = "${cliSources.downloadBase}/v${cliSources.version}/${cliSrcInfo.name}";
+              sha256 = cliSrcInfo.sha256;
+            };
+
+            sourceRoot = ".";
+
+            installPhase = ''
+              runHook preInstall
+
+              mkdir -p $out/bin
+              install -m755 rc $out/bin/rc
+
+              runHook postInstall
+            '';
+
+            meta = with pkgs.lib; {
+              description = "S3-compatible command-line client and admin tool for RustFS";
+              homepage = "https://github.com/rustfs/cli";
+              license = with licenses; [
+                mit
+                asl20
+              ];
+              platforms = supportedSystems;
+              mainProgram = "rc";
+              sourceProvenance = [ sourceTypes.binaryNativeCode ];
+            };
+          };
         }
       );
 
-      checks = forLinuxSystems (system:
+      checks = forLinuxSystems (
+        system:
         import ./tests {
           inherit self;
           pkgs = import nixpkgs { inherit system; };
         }
       );
 
-      devShells = forAllSystems (system:
-        let pkgs = import nixpkgs { inherit system; };
-        in {
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
           default = pkgs.mkShell {
             # Security: Include shellcheck to assist in writing secure shell scripts during development.
-            buildInputs = with pkgs; [ nixpkgs-fmt shellcheck ];
+            buildInputs = with pkgs; [
+              nixpkgs-fmt
+              shellcheck
+            ];
           };
         }
       );

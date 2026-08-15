@@ -51,14 +51,25 @@
   services.rustfs = {
     enable = true;
 
-    # One entry per drive. A comma-separated string works too, but the list form
-    # is easier to read and to generate.
-    volumes = [
-      "/mnt/rustfs0"
-      "/mnt/rustfs1"
-      "/mnt/rustfs2"
-      "/mnt/rustfs3"
+    # One pool, one entry per drive. Giving the pool `nodes` as well is what
+    # turns this into a distributed deployment.
+    pools = [
+      {
+        volumes = [
+          "/mnt/rustfs0"
+          "/mnt/rustfs1"
+          "/mnt/rustfs2"
+          "/mnt/rustfs3"
+        ];
+      }
     ];
+
+    # One erasure set across all four drives, two of them parity: any one drive
+    # may fail while reads and writes continue. Left unset RustFS picks a split
+    # itself, which works but leaves the redundancy implicit.
+    erasureSetDriveCount = 4;
+    storageClassStandardParity = 2;
+    storageClassRrsParity = 1;
 
     address = ":9000";
 

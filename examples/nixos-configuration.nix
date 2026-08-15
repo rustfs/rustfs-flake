@@ -24,7 +24,7 @@
     enable = true;
 
     # Storage path - use persistent storage, not /tmp
-    volumes = "/var/lib/rustfs/data";
+    pools = [{ volumes = [ "/var/lib/rustfs/data" ]; }];
 
     # API server address (Port 9000)
     # Use "0.0.0.0:9000" or ":9000" to listen on all interfaces

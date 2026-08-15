@@ -21,25 +21,61 @@
 let
   cfg = config.services.rustfs;
 
-  dist = cfg.distributed;
-
-  configuredVolumes =
-    if builtins.isList cfg.volumes then
-      cfg.volumes
+  # A literal, so it carries 'nodes' itself: the submodule's defaults never reach it.
+  pools =
+    if cfg.pools != [ ] then
+      cfg.pools
     else
-      lib.filter (v: v != "") (lib.splitString "," cfg.volumes);
+      [
+        {
+          nodes = [ ];
+          volumes = [ "/var/lib/rustfs" ];
+        }
+      ];
 
-  localVolumes = if dist.enable then dist.volumes else configuredVolumes;
+  inherit (import ./pool-naming.nix { inherit lib; })
+    rangeable
+    consistentlyPadded
+    ellipsisOf
+    ;
 
-  # Every node must be given the identical endpoint list, ordered drive-major so an
-  # erasure set spans nodes instead of sitting on one.
-  endpoints = lib.concatMap
+  # Both only matter past a single pool, where each has to be one expression.
+  nameLists = lib.concatMap
     (
-      volume: map (node: "http://${node}:${toString dist.port}${volume}") dist.nodes
+      pool: [ pool.volumes ] ++ lib.optional (pool.nodes != [ ]) pool.nodes
     )
-    dist.volumes;
+    pools;
 
-  volumesStr = lib.concatStringsSep " " (if dist.enable then endpoints else configuredVolumes);
+  unrangeable = builtins.filter (items: !rangeable items) nameLists;
+  mixedPadding = builtins.filter (items: rangeable items && !consistentlyPadded items) nameLists;
+
+  # An IPv6 literal needs brackets or its colons run into the port separator.
+  bracketIfIpv6 = host: if lib.hasInfix ":" host then "[${host}]" else host;
+  urlFor = host: volume: "http://${bracketIfIpv6 host}:${toString cfg.port}${volume}";
+
+  # Drive-major, so an erasure set spans nodes instead of sitting on one.
+  endpointsOf =
+    pool:
+    if pool.nodes == [ ] then
+      pool.volumes
+    else
+      lib.concatMap (volume: map (node: urlFor node volume) pool.nodes) pool.volumes;
+
+  ellipsisPool =
+    pool:
+    if pool.nodes == [ ] then
+      ellipsisOf pool.volumes
+    else
+      urlFor (ellipsisOf pool.nodes) (ellipsisOf pool.volumes);
+
+  localVolumes = lib.unique (lib.concatMap (pool: pool.volumes) pools);
+  driveCount = pool: builtins.length pool.volumes * (lib.max 1 (builtins.length pool.nodes));
+
+  # One pool can be listed drive by drive, which puts no shape on the names. Several
+  # cannot: rustfs reads plain arguments as a single pool and refuses the mixture.
+  volumesStr = lib.concatStringsSep " " (
+    if builtins.length pools <= 1 then lib.concatMap endpointsOf pools else map ellipsisPool pools
+  );
 in
 {
   imports = [
@@ -50,6 +86,11 @@ in
     (lib.mkRenamedOptionModule
       [ "services" "rustfs" "secretKey" ]
       [ "services" "rustfs" "secretKeyFile" ]
+    )
+
+    # volumes predates the pool model
+    (lib.mkChangedOptionModule [ "services" "rustfs" "volumes" ] [ "services" "rustfs" "pools" ]
+      (config: [{ volumes = config.services.rustfs.volumes; }])
     )
   ];
 
@@ -104,63 +145,118 @@ in
       '';
     };
 
-    volumes = lib.mkOption {
-      type = lib.types.either lib.types.str (lib.types.listOf lib.types.str);
-      default = [ "/var/lib/rustfs" ];
-      description = "List of paths or comma-separated string where RustFS stores data.";
+    pools = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.submodule {
+          options = {
+            nodes = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              example = [
+                "node1"
+                "node2"
+                "node3"
+                "node4"
+              ];
+              description = ''
+                Hostnames making up this pool, resolvable from every node of it.
+                Left empty the drives are local paths, which is the single-node case.
+              '';
+            };
+            volumes = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              example = [
+                "/mnt/disk0"
+                "/mnt/disk1"
+                "/mnt/disk2"
+                "/mnt/disk3"
+              ];
+              description = ''
+                Drive paths, each on its own filesystem. Every node of the pool uses
+                the same layout.
+              '';
+            };
+          };
+        }
+      );
+      default = [ ];
+      defaultText = lib.literalExpression ''[ { volumes = [ "/var/lib/rustfs" ]; } ]'';
+      example = [
+        {
+          volumes = [
+            "/mnt/disk0"
+            "/mnt/disk1"
+            "/mnt/disk2"
+            "/mnt/disk3"
+          ];
+        }
+        {
+          nodes = [
+            "node1"
+            "node2"
+            "node3"
+            "node4"
+          ];
+          volumes = [
+            "/mnt/disk0"
+            "/mnt/disk1"
+            "/mnt/disk2"
+            "/mnt/disk3"
+          ];
+        }
+      ];
+      description = ''
+        Server pools, in order. Every RustFS deployment is one of these -- a single
+        drive, one node of four, four nodes of four -- so this is the only place
+        drives are declared.
+
+        Appending a pool is how a cluster grows without rebalancing what it already
+        stores, and the only route from a single-node deployment to a distributed
+        one; draining the old pool afterwards is `rc admin decommission`.
+
+        A lone pool is listed drive by drive, so its names take any shape. Several
+        cannot be: RustFS reads plain arguments as one pool and rejects mixing the
+        two forms, so each pool has to collapse into a single ellipsis expression
+        such as `node{2...5}`. That needs a common prefix and a contiguous numeric
+        range, which a single-node pool does not need for its hostname.
+
+        Keep the list identical and in the same order on every node: RustFS derives
+        pool identity from it, so a divergent list is a different cluster.
+      '';
     };
 
-    distributed = {
-      enable = lib.mkEnableOption "a distributed RustFS cluster spanning several nodes";
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 9000;
+      description = "Port peers reach each other on, matching `address`.";
+    };
 
-      nodes = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        example = [
-          "node1"
-          "node2"
-          "node3"
-          "node4"
-        ];
-        description = ''
-          Hostnames of every node in the cluster, resolvable from each of them.
-          Used to render the shared endpoint list; set identically on all nodes.
-        '';
-      };
+    erasureSetDriveCount = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 4;
+      description = ''
+        Drives per erasure set. Left null RustFS picks a divisor of the pool's drive
+        count itself; set it when the split matters, such as one set spanning all
+        four nodes of a pool rather than sitting inside one.
+      '';
+    };
 
-      volumes = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        example = [
-          "/mnt/disk0"
-          "/mnt/disk1"
-          "/mnt/disk2"
-          "/mnt/disk3"
-        ];
-        description = ''
-          Drive paths present on each node, each on its own filesystem. Every node
-          uses the same layout, so this replaces `volumes` when distributed mode is
-          enabled and is what gets created and made writable locally.
-        '';
-      };
+    storageClassStandardParity = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 2;
+      description = ''
+        Parity drives per erasure set for the STANDARD storage class. Two of four
+        tolerates one node of a four-node set going away while writes continue.
+      '';
+    };
 
-      port = lib.mkOption {
-        type = lib.types.port;
-        default = 9000;
-        description = "Port peers reach each other on, matching `address`.";
-      };
-
-      localEndpointHost = lib.mkOption {
-        type = lib.types.str;
-        default = config.networking.hostName;
-        defaultText = lib.literalExpression "config.networking.hostName";
-        description = ''
-          Which entry of `nodes` identifies this machine, so it claims its own
-          drives instead of reaching them over RPC. Required whenever `address`
-          binds a wildcard such as `0.0.0.0`, since RustFS cannot infer its
-          identity from that and would otherwise treat every drive as remote.
-        '';
-      };
+    storageClassRrsParity = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 1;
+      description = "Parity drives per erasure set for the REDUCED_REDUNDANCY class.";
     };
 
     address = lib.mkOption {
@@ -205,19 +301,42 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Erasure coding needs 4 drives; a distributed cluster needs 4 nodes of 4.
     assertions = [
       {
-        assertion = dist.enable -> builtins.length dist.nodes >= 4;
-        message = "services.rustfs.distributed.nodes needs at least 4 nodes, got ${toString (builtins.length dist.nodes)}.";
+        assertion = pools != [ ];
+        message = "services.rustfs.pools cannot be empty -- RustFS needs at least one drive.";
       }
       {
-        assertion = dist.enable -> builtins.length dist.volumes >= 4;
-        message = "services.rustfs.distributed.volumes needs at least 4 drives per node, got ${toString (builtins.length dist.volumes)}.";
+        assertion = builtins.length pools <= 1 || unrangeable == [ ];
+        message = "services.rustfs.pools: ${builtins.toJSON unrangeable} cannot each be named as one rustfs pool. Past a single pool every name list has to collapse to an ellipsis expression, so it needs a common prefix and a contiguous numeric range such as node{2...5}.";
       }
       {
-        assertion = dist.enable -> builtins.elem dist.localEndpointHost dist.nodes;
-        message = "services.rustfs.distributed.localEndpointHost is ${dist.localEndpointHost}, which is not one of nodes (${lib.concatStringsSep ", " dist.nodes}).";
+        assertion = builtins.length pools <= 1 || mixedPadding == [ ];
+        message = "services.rustfs.pools: ${builtins.toJSON mixedPadding} mixes zero-padded and bare numbers. An ellipsis carries the low bound's width across the range, so these would expand to drive names you never declared -- pad all of them or none.";
+      }
+      {
+        assertion = lib.all (pool: pool.volumes != [ ]) pools;
+        message = "every services.rustfs.pools entry needs at least one drive.";
+      }
+      # A pool's drives are dealt into erasure sets, so the count has to divide.
+      {
+        assertion =
+          cfg.erasureSetDriveCount != null
+          -> lib.all (pool: lib.mod (driveCount pool) cfg.erasureSetDriveCount == 0) pools;
+        message = "every services.rustfs.pools entry needs a drive count divisible by erasureSetDriveCount (${toString cfg.erasureSetDriveCount}); got ${
+          lib.concatMapStringsSep ", " (pool: toString (driveCount pool)) pools
+        }.";
+      }
+      # Parity is taken out of the set, so it cannot claim the whole of it.
+      {
+        assertion =
+          lib.all
+            (parity: parity != null && cfg.erasureSetDriveCount != null -> parity < cfg.erasureSetDriveCount)
+            [
+              cfg.storageClassStandardParity
+              cfg.storageClassRrsParity
+            ];
+        message = "services.rustfs storage class parity must be below erasureSetDriveCount (${toString cfg.erasureSetDriveCount}).";
       }
     ];
 
@@ -263,8 +382,14 @@ in
       // lib.optionalAttrs (cfg.logDirectory != null) {
         RUSTFS_OBS_LOG_DIRECTORY = cfg.logDirectory;
       }
-      // lib.optionalAttrs dist.enable {
-        RUSTFS_LOCAL_ENDPOINT_HOST = dist.localEndpointHost;
+      // lib.optionalAttrs (cfg.erasureSetDriveCount != null) {
+        RUSTFS_ERASURE_SET_DRIVE_COUNT = toString cfg.erasureSetDriveCount;
+      }
+      // lib.optionalAttrs (cfg.storageClassStandardParity != null) {
+        RUSTFS_STORAGE_CLASS_STANDARD = "EC:${toString cfg.storageClassStandardParity}";
+      }
+      // lib.optionalAttrs (cfg.storageClassRrsParity != null) {
+        RUSTFS_STORAGE_CLASS_RRS = "EC:${toString cfg.storageClassRrsParity}";
       }
       // cfg.extraEnvironmentVariables;
 
