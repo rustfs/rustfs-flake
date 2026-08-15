@@ -151,14 +151,18 @@ in
       };
 
       localEndpointHost = lib.mkOption {
-        type = lib.types.str;
-        default = config.networking.hostName;
-        defaultText = lib.literalExpression "config.networking.hostName";
+        type = lib.types.nullOr lib.types.str;
+        default = null;
         description = ''
           Which entry of `nodes` identifies this machine, so it claims its own
-          drives instead of reaching them over RPC. Required whenever `address`
-          binds a wildcard such as `0.0.0.0`, since RustFS cannot infer its
-          identity from that and would otherwise treat every drive as remote.
+          drives instead of reaching them over RPC. Normally unnecessary: RustFS
+          resolves each endpoint host and recognises the addresses that are its
+          own, wildcard bind included. Set it only when that inference fails.
+
+          RustFS 1.0.0-rc.1 accepts this in orchestrated mode alone, which it
+          infers from running under Kubernetes, so on a plain host it refuses to
+          start. Pass it through `extraEnvironmentVariables` if you do run this
+          module inside a pod.
         '';
       };
     };
@@ -216,8 +220,9 @@ in
         message = "services.rustfs.distributed.volumes needs at least 4 drives per node, got ${toString (builtins.length dist.volumes)}.";
       }
       {
-        assertion = dist.enable -> builtins.elem dist.localEndpointHost dist.nodes;
-        message = "services.rustfs.distributed.localEndpointHost is ${dist.localEndpointHost}, which is not one of nodes (${lib.concatStringsSep ", " dist.nodes}).";
+        assertion =
+          dist.localEndpointHost != null -> builtins.elem dist.localEndpointHost dist.nodes;
+        message = "services.rustfs.distributed.localEndpointHost is ${toString dist.localEndpointHost}, which is not one of nodes (${lib.concatStringsSep ", " dist.nodes}).";
       }
     ];
 
@@ -263,7 +268,7 @@ in
       // lib.optionalAttrs (cfg.logDirectory != null) {
         RUSTFS_OBS_LOG_DIRECTORY = cfg.logDirectory;
       }
-      // lib.optionalAttrs dist.enable {
+      // lib.optionalAttrs (dist.localEndpointHost != null) {
         RUSTFS_LOCAL_ENDPOINT_HOST = dist.localEndpointHost;
       }
       // cfg.extraEnvironmentVariables;
