@@ -41,7 +41,7 @@ let
         }
       ]
     else if legacyVolumes != null then
-      [ { volumes = legacyVolumes; } ]
+      [{ volumes = legacyVolumes; }]
     else
       [
         {

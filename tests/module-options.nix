@@ -50,7 +50,7 @@ let
   ok =
     localEnvironment.RUSTFS_VOLUMES == "/mnt/rustfs0 /mnt/rustfs1"
     && distributedEnvironment.RUSTFS_VOLUMES
-      == "http://node1:9002/mnt/rustfs0 http://node2:9002/mnt/rustfs0 http://node1:9002/mnt/rustfs1 http://node2:9002/mnt/rustfs1"
+    == "http://node1:9002/mnt/rustfs0 http://node2:9002/mnt/rustfs0 http://node1:9002/mnt/rustfs1 http://node2:9002/mnt/rustfs1"
     && !(distributedEnvironment ? RUSTFS_LOCAL_ENDPOINT_HOST)
     && hasFailedAssertion invalidMultiPool.config;
 in
