@@ -48,6 +48,9 @@ jobs:
       - name: Evaluate flake outputs
         run: nix flake check --no-build
 
+      - name: Build module regression checks
+        run: nix build .#checks.x86_64-linux.poolNaming .#checks.x86_64-linux.moduleOptions
+
       - name: Evaluate example configuration
         run: |
           cd examples
@@ -70,4 +73,3 @@ jobs:
 
       - name: Build rustfs package (x86_64-linux)
         run: nix build .#packages.x86_64-linux.default --print-build-logs
-

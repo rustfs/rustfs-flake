@@ -21,10 +21,27 @@
 let
   cfg = config.services.rustfs;
 
+  legacyVolumes =
+    if cfg.volumes == null then
+      null
+    else if builtins.isList cfg.volumes then
+      cfg.volumes
+    else
+      lib.filter (volume: volume != "") (lib.splitString "," cfg.volumes);
+
   # A literal, so it carries 'nodes' itself: the submodule's defaults never reach it.
   pools =
     if cfg.pools != [ ] then
       cfg.pools
+    else if cfg.distributed.enable then
+      [
+        {
+          nodes = cfg.distributed.nodes;
+          volumes = cfg.distributed.volumes;
+        }
+      ]
+    else if legacyVolumes != null then
+      [ { volumes = legacyVolumes; } ]
     else
       [
         {
@@ -51,7 +68,8 @@ let
 
   # An IPv6 literal needs brackets or its colons run into the port separator.
   bracketIfIpv6 = host: if lib.hasInfix ":" host then "[${host}]" else host;
-  urlFor = host: volume: "http://${bracketIfIpv6 host}:${toString cfg.port}${volume}";
+  endpointPort = if cfg.distributed.enable then cfg.distributed.port else cfg.port;
+  urlFor = host: volume: "http://${bracketIfIpv6 host}:${toString endpointPort}${volume}";
 
   # Drive-major, so an erasure set spans nodes instead of sitting on one.
   endpointsOf =
@@ -86,11 +104,6 @@ in
     (lib.mkRenamedOptionModule
       [ "services" "rustfs" "secretKey" ]
       [ "services" "rustfs" "secretKeyFile" ]
-    )
-
-    # volumes predates the pool model
-    (lib.mkChangedOptionModule [ "services" "rustfs" "volumes" ] [ "services" "rustfs" "pools" ]
-      (config: [{ volumes = config.services.rustfs.volumes; }])
     )
   ];
 
@@ -143,6 +156,49 @@ in
         via LoadCredential and exposes a copy in the service's credential directory ($CREDENTIALS_DIRECTORY).
         For security best practices, use secret management tools like sops-nix, agenix, or NixOps keys.
       '';
+    };
+
+    volumes = lib.mkOption {
+      type = lib.types.nullOr (lib.types.either lib.types.str (lib.types.listOf lib.types.str));
+      default = null;
+      description = ''
+        Deprecated compatibility option for one local pool. A list is used as-is;
+        a comma-separated string is split into a list. Use `pools` for new
+        configurations.
+      '';
+    };
+
+    distributed = {
+      enable = lib.mkEnableOption "a distributed RustFS cluster spanning several nodes (deprecated; use pools)";
+
+      nodes = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Deprecated compatibility option; use pools.<name>.nodes.";
+      };
+
+      volumes = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Deprecated compatibility option; use pools.<name>.volumes.";
+      };
+
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 9000;
+        description = "Deprecated compatibility option; use port.";
+      };
+
+      localEndpointHost = lib.mkOption {
+        type = lib.types.str;
+        default = config.networking.hostName;
+        defaultText = lib.literalExpression "config.networking.hostName";
+        description = ''
+          Deprecated compatibility option. RustFS now discovers static endpoint
+          locality itself; orchestrated deployments that need an explicit anchor
+          must set `extraEnvironmentVariables.RUSTFS_LOCAL_ENDPOINT_HOST`.
+        '';
+      };
     };
 
     pools = lib.mkOption {
@@ -307,6 +363,10 @@ in
         message = "services.rustfs.pools cannot be empty -- RustFS needs at least one drive.";
       }
       {
+        assertion = cfg.pools == [ ] || (cfg.volumes == null && !cfg.distributed.enable);
+        message = "services.rustfs.pools cannot be combined with deprecated volumes or distributed.enable.";
+      }
+      {
         assertion = builtins.length pools <= 1 || unrangeable == [ ];
         message = "services.rustfs.pools: ${builtins.toJSON unrangeable} cannot each be named as one rustfs pool. Past a single pool every name list has to collapse to an ellipsis expression, so it needs a common prefix and a contiguous numeric range such as node{2...5}.";
       }
@@ -317,6 +377,10 @@ in
       {
         assertion = lib.all (pool: pool.volumes != [ ]) pools;
         message = "every services.rustfs.pools entry needs at least one drive.";
+      }
+      {
+        assertion = builtins.length pools <= 1 || lib.all (pool: driveCount pool >= 2) pools;
+        message = "every services.rustfs.pools entry needs at least two endpoints when multiple pools are configured, so every rendered pool argument contains an ellipsis expression.";
       }
       # A pool's drives are dealt into erasure sets, so the count has to divide.
       {
@@ -339,6 +403,13 @@ in
         message = "services.rustfs storage class parity must be below erasureSetDriveCount (${toString cfg.erasureSetDriveCount}).";
       }
     ];
+
+    warnings =
+      lib.optional (cfg.volumes != null) "services.rustfs.volumes is deprecated; use services.rustfs.pools."
+      ++ lib.optional cfg.distributed.enable "services.rustfs.distributed is deprecated; use services.rustfs.pools and services.rustfs.port."
+      ++ lib.optional
+        (cfg.distributed.enable && cfg.distributed.localEndpointHost != config.networking.hostName)
+        "services.rustfs.distributed.localEndpointHost is ignored; set services.rustfs.extraEnvironmentVariables.RUSTFS_LOCAL_ENDPOINT_HOST only for an orchestrated deployment that needs an explicit local endpoint anchor.";
 
     users.groups = lib.mkIf (cfg.group == "rustfs") {
       rustfs = { };
