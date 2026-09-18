@@ -344,11 +344,11 @@ tlsDirectory = "/etc/rustfs/tls";
 ```nix
 services.rustfs = {
   enable = true;
-  accessKey = "rustfsadmin";     # ❌ In Nix store (world-readable)
-  secretKey = "rustfsadmin";     # ❌ In Nix store (world-readable)
-  volumes = "/tmp/rustfs";       # ❌ Temporary storage
-  # Running as root                ❌ Excessive privileges
-  # No systemd hardening           ❌ No sandboxing
+  accessKey = "rustfsadmin";                     # ❌ In Nix store (world-readable)
+  secretKey = "rustfsadmin";                     # ❌ In Nix store (world-readable)
+  pools = [ { volumes = [ "/tmp/rustfs" ]; } ];  # ❌ Temporary storage
+  # Running as root                                ❌ Excessive privileges
+  # No systemd hardening                           ❌ No sandboxing
 };
 ```
 
@@ -367,9 +367,9 @@ services.rustfs = {
   enable = true;
   accessKeyFile = config.sops.secrets.rustfs-access-key.path;  # ✅ Encrypted
   secretKeyFile = config.sops.secrets.rustfs-secret-key.path;  # ✅ Encrypted
-  volumes = "/var/lib/rustfs";                                 # ✅ Persistent
-  # Runs as unprivileged user                                   ✅ Least privilege
-  # Comprehensive systemd hardening                             ✅ Defense in depth
+  pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];            # ✅ Persistent
+  # Runs as unprivileged user                                    ✅ Least privilege
+  # Comprehensive systemd hardening                              ✅ Defense in depth
   consoleAddress = "127.0.0.1:9001";                           # ✅ Localhost only
 };
 ```

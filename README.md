@@ -56,7 +56,7 @@ Then, add the flake to your `configuration.nix`:
       # Use accessKeyFile and secretKeyFile instead:
       accessKeyFile = "/run/secrets/rustfs-access-key";  # or use sops-nix, agenix, etc.
       secretKeyFile = "/run/secrets/rustfs-secret-key";
-      volumes = "/var/lib/rustfs";  # Use a persistent location
+      pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];  # Use a persistent location
       address = ":9000";
       consoleEnable = true;
       consoleAddress = ":9001";
@@ -94,7 +94,7 @@ Then, add the flake to your `configuration.nix`:
     package = inputs.rustfs.packages.${pkgs.stdenv.hostPlatform.system}.default;
     accessKeyFile = config.sops.secrets.rustfs-access-key.path;
     secretKeyFile = config.sops.secrets.rustfs-secret-key.path;
-    volumes = "/var/lib/rustfs";
+    pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];
     address = ":9000";
     consoleEnable = true;
   };
@@ -168,52 +168,43 @@ User account under which RustFS runs. The service runs as a dedicated non-root u
 
 Group under which RustFS runs.
 
-### services.rustfs.volumes
+### services.rustfs.pools
 
-**Type:** `string` or `list of strings`
+**Type:** `list of submodules ({ nodes, volumes })`
 
-**Default:** `["/var/lib/rustfs"]`
+**Default:** `[ { volumes = [ "/var/lib/rustfs" ]; } ]`
 
-List of paths or comma-separated string where RustFS stores data. Use persistent locations, not /tmp. Each entry must be
-its own filesystem; several entries on one disk give no redundancy. Erasure coding needs at least 4 drives. Ignored when
-`distributed.enable` is set — use `distributed.volumes` instead.
+**Example:**
 
-### services.rustfs.distributed.enable
+```nix
+services.rustfs.pools = [
+  { nodes = [ "node1" "node2" "node3" "node4" ]; volumes = [ "/mnt/disk0" "/mnt/disk1" "/mnt/disk2" "/mnt/disk3" ]; }
+  { nodes = [ "node5" "node6" "node7" "node8" ]; volumes = [ "/mnt/disk0" "/mnt/disk1" "/mnt/disk2" "/mnt/disk3" ]; }
+];
+```
 
-**Type:** `bool`
+Server pools, in order. Every RustFS deployment is a pool no matter if it is a single drive, one node of four, four nodes of four,
+so this is the only place drives are declared. A pool with an empty `nodes` uses local paths; give it hostnames and its
+drives become URL endpoints, which is what makes a deployment distributed.
 
-**Default:** `false`
+Each entry takes `nodes` (hostnames making up the pool, resolvable from every node of it) and `volumes` (drive paths,
+each on its own filesystem, with every node of the pool using the same layout). Use persistent locations, not /tmp:
+several entries on one disk give no redundancy.
 
-Whether to run as part of a distributed RustFS cluster spanning several nodes. When enabled, the module renders the
-shared endpoint list (`http://<node>:<port><volume>` for every node × volume pair) that all nodes must agree on, ordered
-drive-major so an erasure set spans nodes instead of sitting on one.
+Appending a pool is how a cluster grows without rebalancing what it already stores, and the only route from a
+single-node deployment to a distributed one. Draining the old pool afterwards is `rc admin decommission`.
+
+A lone pool is listed drive by drive, so its names take any shape. Several cannot be: RustFS reads plain arguments as
+one pool and rejects mixing the two forms, so each pool has to collapse into a single ellipsis expression such as
+`node{2...5}`. That needs a common prefix and a contiguous numeric range, and padding that is all or nothing `disk01`
+alongside `disk2` would expand to a drive you never declared, so the module refuses it.
+
+Keep the list identical and in the same order on every node: RustFS derives pool identity from it, so a divergent list
+is a different cluster.
 
 See [examples/distributed-cluster.nix](./examples/distributed-cluster.nix) for a complete four-node configuration.
 
-### services.rustfs.distributed.nodes
-
-**Type:** `list of strings`
-
-**Default:** `[]`
-
-**Example:** `["node1" "node2" "node3" "node4"]`
-
-Hostnames of every node in the cluster, resolvable from each of them. Set identically on all nodes — the endpoint list is
-rendered from this and must come out byte-identical cluster-wide. At least 4 nodes are required.
-
-### services.rustfs.distributed.volumes
-
-**Type:** `list of strings`
-
-**Default:** `[]`
-
-**Example:** `["/mnt/disk0" "/mnt/disk1" "/mnt/disk2" "/mnt/disk3"]`
-
-Drive paths present on each node, each on its own filesystem. Every node uses the same layout, so this replaces
-`volumes` in distributed mode and is what gets created and made writable locally. At least 4 drives per node are
-required.
-
-### services.rustfs.distributed.port
+### services.rustfs.port
 
 **Type:** `port`
 
@@ -221,15 +212,37 @@ required.
 
 Port peers reach each other on. Must match the port in `address`, and be open between nodes in the firewall.
 
-### services.rustfs.distributed.localEndpointHost
+### services.rustfs.erasureSetDriveCount
 
-**Type:** `string`
+**Type:** `null or positive integer`
 
-**Default:** `config.networking.hostName`
+**Default:** `null`
 
-Which entry of `nodes` identifies this machine, so it claims its own drives instead of reaching them over RPC. Required
-whenever `address` binds a wildcard such as `0.0.0.0`, since RustFS cannot infer its identity from that and would
-otherwise treat every drive as remote.
+**Example:** `4`
+
+Drives per erasure set. Left null RustFS picks a divisor of the pool's drive count itself; set it when the split matters,
+such as one set spanning all four nodes of a pool rather than sitting inside one. A pool's drive count must divide by it.
+
+### services.rustfs.storageClassStandardParity
+
+**Type:** `null or positive integer`
+
+**Default:** `null`
+
+**Example:** `2`
+
+Parity drives per erasure set for the STANDARD storage class. Two of four tolerates one node of a four-node set going
+away while writes continue. Must be below `erasureSetDriveCount`.
+
+### services.rustfs.storageClassRrsParity
+
+**Type:** `null or positive integer`
+
+**Default:** `null`
+
+**Example:** `1`
+
+Parity drives per erasure set for the REDUCED_REDUNDANCY class. Must be below `erasureSetDriveCount`.
 
 > **Note**: All nodes must share the *same* access/secret key pair, and it must not be the default
 > `rustfsadmin`/`rustfsadmin` — RustFS derives the inter-node RPC secret from the credentials and refuses to derive one

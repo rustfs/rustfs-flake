@@ -27,7 +27,7 @@ pkgs.testers.runNixOSTest {
     services.rustfs = {
       enable = true;
       package = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      inherit volumes;
+      pools = [{ inherit volumes; }];
       address = "127.0.0.1:9000";
       consoleEnable = false;
       accessKeyFile = "/etc/rustfs-access-key";
