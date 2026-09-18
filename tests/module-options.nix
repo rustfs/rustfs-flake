@@ -3,7 +3,7 @@
 let
   lib = pkgs.lib;
   system = pkgs.stdenv.hostPlatform.system;
-  nixosSystem = import "${pkgs.path}/nixos/lib/eval-config.nix";
+  nixosSystem = import (pkgs.path + "/nixos/lib/eval-config.nix");
 
   baseModule = {
     system.stateVersion = "24.11";
