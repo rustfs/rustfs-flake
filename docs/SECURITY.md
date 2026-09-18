@@ -192,7 +192,7 @@ services.rustfs = {
   pools = [ { volumes = [ "/var/lib/rustfs" ]; } ];
 
   # ✅ Also good - multiple volumes
-  volumes = [ "/mnt/storage1" "/mnt/storage2" ];
+  pools = [ { volumes = [ "/mnt/storage1" "/mnt/storage2" ]; } ];
 };
 ```
 
@@ -315,4 +315,3 @@ sudo systemctl status rustfs
 - [sops-nix Documentation](https://github.com/Mic92/sops-nix)
 - [agenix Documentation](https://github.com/ryantm/agenix)
 - [systemd Security Features](https://www.freedesktop.org/software/systemd/man/systemd.exec.html)
-
