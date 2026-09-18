@@ -198,9 +198,14 @@ A lone pool is listed drive by drive, so its names take any shape. Several canno
 one pool and rejects mixing the two forms, so each pool has to collapse into a single ellipsis expression such as
 `node{2...5}`. That needs a common prefix and a contiguous numeric range, and padding that is all or nothing `disk01`
 alongside `disk2` would expand to a drive you never declared, so the module refuses it.
+When multiple pools are configured, every pool needs at least two endpoints so its rendered argument contains an
+ellipsis expression.
 
 Keep the list identical and in the same order on every node: RustFS derives pool identity from it, so a divergent list
 is a different cluster.
+
+The former `services.rustfs.volumes` option is converted to a one-pool list with a Nix migration warning; migrate to
+`pools` in your configuration. Distributed deployments must use `pools` and the top-level `port`.
 
 See [examples/distributed-cluster.nix](./examples/distributed-cluster.nix) for a complete four-node configuration.
 

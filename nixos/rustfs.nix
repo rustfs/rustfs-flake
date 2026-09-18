@@ -87,10 +87,23 @@ in
       [ "services" "rustfs" "secretKey" ]
       [ "services" "rustfs" "secretKeyFile" ]
     )
-
-    # volumes predates the pool model
     (lib.mkChangedOptionModule [ "services" "rustfs" "volumes" ] [ "services" "rustfs" "pools" ]
-      (config: [{ volumes = config.services.rustfs.volumes; }])
+      (
+        config:
+        let
+          volumes = config.services.rustfs.volumes;
+        in
+        [
+          {
+            nodes = [ ];
+            volumes =
+              if builtins.isList volumes then
+                volumes
+              else
+                lib.filter (volume: volume != "") (lib.splitString "," volumes);
+          }
+        ]
+      )
     )
   ];
 
@@ -317,6 +330,10 @@ in
       {
         assertion = lib.all (pool: pool.volumes != [ ]) pools;
         message = "every services.rustfs.pools entry needs at least one drive.";
+      }
+      {
+        assertion = builtins.length pools <= 1 || lib.all (pool: driveCount pool >= 2) pools;
+        message = "every services.rustfs.pools entry needs at least two endpoints when multiple pools are configured, so every rendered pool argument contains an ellipsis expression.";
       }
       # A pool's drives are dealt into erasure sets, so the count has to divide.
       {
