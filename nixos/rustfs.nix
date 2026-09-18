@@ -41,7 +41,12 @@ let
         }
       ]
     else if legacyVolumes != null then
-      [{ volumes = legacyVolumes; }]
+      [
+        {
+          nodes = [ ];
+          volumes = legacyVolumes;
+        }
+      ]
     else
       [
         {
