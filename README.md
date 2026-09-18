@@ -204,10 +204,8 @@ ellipsis expression.
 Keep the list identical and in the same order on every node: RustFS derives pool identity from it, so a divergent list
 is a different cluster.
 
-`services.rustfs.volumes` and `services.rustfs.distributed` remain accepted as deprecated compatibility options. A
-legacy comma-separated `volumes` string is converted to a one-pool list, and an enabled legacy `distributed` block is
-converted to one distributed pool. Migrate to `pools` and the top-level `port`; for orchestrated deployments that need
-an explicit local endpoint anchor, set `extraEnvironmentVariables.RUSTFS_LOCAL_ENDPOINT_HOST`.
+The former `services.rustfs.volumes` option is converted to a one-pool list with a Nix migration warning; migrate to
+`pools` in your configuration. Distributed deployments must use `pools` and the top-level `port`.
 
 See [examples/distributed-cluster.nix](./examples/distributed-cluster.nix) for a complete four-node configuration.
 

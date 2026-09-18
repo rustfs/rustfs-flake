@@ -25,19 +25,6 @@ let
     services.rustfs.volumes = "/mnt/rustfs0,/mnt/rustfs1";
   };
 
-  legacyDistributed = evaluate {
-    services.rustfs = {
-      distributed = {
-        enable = true;
-        nodes = [ "node1" "node2" ];
-        volumes = [ "/mnt/rustfs0" "/mnt/rustfs1" ];
-        port = 9002;
-        localEndpointHost = "node1";
-      };
-      address = "0.0.0.0:9002";
-    };
-  };
-
   invalidMultiPool = evaluate {
     services.rustfs.pools = [
       { volumes = [ "/mnt/rustfs0" ]; }
@@ -47,12 +34,8 @@ let
 
   hasFailedAssertion = configuration: lib.any (entry: !entry.assertion) configuration.assertions;
   localEnvironment = legacyLocal.systemd.services.rustfs.environment;
-  distributedEnvironment = legacyDistributed.systemd.services.rustfs.environment;
   ok =
     localEnvironment.RUSTFS_VOLUMES == "/mnt/rustfs0 /mnt/rustfs1"
-    && distributedEnvironment.RUSTFS_VOLUMES
-    == "http://node1:9002/mnt/rustfs0 http://node2:9002/mnt/rustfs0 http://node1:9002/mnt/rustfs1 http://node2:9002/mnt/rustfs1"
-    && !(distributedEnvironment ? RUSTFS_LOCAL_ENDPOINT_HOST)
     && hasFailedAssertion invalidMultiPool;
 in
 assert ok;
