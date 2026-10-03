@@ -78,6 +78,9 @@ let
   );
 in
 {
+  # Use this flake's module when nixpkgs also provides a RustFS module.
+  disabledModules = [ "services/web-servers/rustfs.nix" ];
+
   imports = [
     (lib.mkRenamedOptionModule
       [ "services" "rustfs" "accessKey" ]
