@@ -35,10 +35,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v25
+        uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
@@ -54,8 +54,9 @@ jobs:
       - name: Evaluate example configuration
         run: |
           cd examples
-          nix eval --override-input rustfs-flake "path:${GITHUB_WORKSPACE}" \
-          .#nixosConfigurations.example-host.config.services.rustfs.enable
+          nix eval --no-write-lock-file \
+            --override-input rustfs-flake "path:${GITHUB_WORKSPACE}" \
+            .#nixosConfigurations.example-host.config.services.rustfs.enable
 
   build-linux-package:
     name: Build Linux package
@@ -64,10 +65,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v25
+        uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
