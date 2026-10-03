@@ -18,6 +18,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rustfs-flake.url = "github:rustfs/rustfs-flake?ref=main";
+    rustfs-flake.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = { self, nixpkgs, rustfs-flake }: {
