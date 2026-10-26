@@ -1,18 +1,18 @@
 {
-  "version": "1.0.4-preview.1",
+  "version": "1.0.4",
   "downloadBase": "https://github.com/rustfs/rustfs/releases/download",
   "files": {
     "x86_64-linux": {
-      "name": "rustfs-linux-x86_64-musl-v1.0.4-preview.1.zip",
-      "sha256": "6b73d472dad7405118ee612ef6e3842e332a98700bf33c220809759ccc3f73ac"
+      "name": "rustfs-linux-x86_64-musl-v1.0.4.zip",
+      "sha256": "4924ad4b699b9f59943051efedae2d1eb6d4cac503a1b0384c4b25f7c2c31b5c"
     },
     "aarch64-linux": {
-      "name": "rustfs-linux-aarch64-musl-v1.0.4-preview.1.zip",
-      "sha256": "f61f412291039c70e9e5b6a08ca4accb67473a6d8240a5ca57b4755946cfba3c"
+      "name": "rustfs-linux-aarch64-musl-v1.0.4.zip",
+      "sha256": "81414fd0e41969f4f5c2e0555951cee76d3f224c112c269c80f52b31276f187a"
     },
     "aarch64-darwin": {
-      "name": "rustfs-macos-aarch64-v1.0.4-preview.1.zip",
-      "sha256": "7ae577dca7dbfbf45503a8c1340692ce54b581a133aa765bb1e898d5089bb64f"
+      "name": "rustfs-macos-aarch64-v1.0.4.zip",
+      "sha256": "49057482769d7904ef95dc40457d71122f48cbb8e9e0725a0817a3ec6daf8270"
     }
   }
 }
